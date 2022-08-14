@@ -1,7 +1,7 @@
 module Solitons
 import HISOL: HCF, Data
 import Roots: find_zero
-import Luna.PhysData: wlfreq, c, γ3_gas, pressure
+import Luna.PhysData: wlfreq, c, ε_0, γ3_gas, pressure
 
 T0fac = (2*acosh(sqrt(2)))
 
@@ -92,7 +92,7 @@ function RDW_density(λ_target, a, gas, λ0, τfwhm=Inf, energy=0; kwargs...)
         γ3 = γ3_gas(gas)
         aeff = HCF.Aeff(a; kwargs...)
         ω0 = wlfreq(λ0)
-        bot -= 3*ω0*P0*γ3/(8*c^2*ε0*aeff)
+        bot -= 3*ω0*P0*γ3/(8*c^2*ε_0*aeff)
     end
 
     top/bot
