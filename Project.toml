@@ -1,0 +1,13 @@
+name = "HISOL"
+uuid = "b3f70d9b-428d-48dd-a02b-de2d62b823ae"
+authors = ["Christian Brahms <c.brahms@hw.ac.uk>"]
+version = "0.1.0"
+
+[compat]
+julia = "1.7"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
