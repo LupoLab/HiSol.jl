@@ -26,7 +26,7 @@ function Leff(length, a...; kw...)
     (1-exp(-α_*length))/α_
 end
 
-function β(a, λ::Number, gas, pressure; kwargs...)
+function β(a, gas, pressure, λ::Number; kwargs...)
     u_nm = get_unm(kwargs...)
     ω = wlfreq(λ)
     γ1 = real(sellmeier_gas(gas)(1e6λ))
@@ -34,9 +34,18 @@ function β(a, λ::Number, gas, pressure; kwargs...)
     ω/c * (1 + ρ*γ1/2 - u_nm^2*c^2/(2a^2*ω^2))
 end
 
-function dispersion(a, λ, gas, pressure, n=2; kwargs...)
+function β_ret(a, gas, pressure, λ, λ0; kwargs...)
+    ω = wlfreq(λ)
+    ω0 = wlfreq(λ0)
+    β0 = β(a, gas, pressure, λ0; kwargs...)
+    β1 = dispersion(a, gas, pressure, λ0, 1; kwargs...)
+    βλ = β.(a, gas, pressure, λ; kwargs...)
+    @. βλ - β1*(ω - ω0) - β0
+end
+
+function dispersion(a, gas, pressure, λ, n=2; kwargs...)
     derivative(wlfreq(λ), n) do ω
-        β(a, wlfreq(ω), gas, pressure; kwargs...)
+        β(a, gas, pressure, wlfreq(ω); kwargs...)
     end
 end
 
@@ -64,7 +73,7 @@ function ZDW(a, gas, pressure; λmin=100e-9, λmax=3e-6, kwargs...)
     ω0 = missing
     try
         ω0 = find_zero((lbω, ubω)) do ω
-            dispersion(a, wlfreq(ω), gas, pressure, 2; kwargs...)
+            dispersion(a, gas, pressure, wlfreq(ω), 2; kwargs...)
         end
     catch e
         println(e)

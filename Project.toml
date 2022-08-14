@@ -3,6 +3,10 @@ uuid = "b3f70d9b-428d-48dd-a02b-de2d62b823ae"
 authors = ["Christian Brahms <c.brahms@hw.ac.uk>"]
 version = "0.1.0"
 
+[deps]
+Luna = "30eb0fb0-5147-11e9-3356-d75b018717ce"
+Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
+
 [compat]
 julia = "1.7"
 
