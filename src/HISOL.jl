@@ -1,5 +1,7 @@
 module HISOL
 
-# Write your package code here.
+include("Data.jl")
+include("HCF.jl")
+include("Solitons.jl")
 
 end
