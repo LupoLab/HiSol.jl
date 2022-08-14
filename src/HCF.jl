@@ -81,4 +81,11 @@ function ZDW(a, gas, pressure; λmin=100e-9, λmax=3e-6, kwargs...)
     return 2π*c/ω0
 end
 
+function ZDW_density(λzd, a, gas; kwargs...)
+    # eq. S4 of Supplementary, Travers et al., Nat. Phot. 13, 547 (2019)
+    get_unm(kwargs...)^2/(2*π^2*a^2*fβ2(gas, λzd))
+end
+
+ZDW_pressure(λzd, a, gas; kwargs...) = pressure(gas, ZDW_density(λzd, a, gas; kwargs...))
+
 end
