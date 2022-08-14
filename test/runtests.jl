@@ -2,5 +2,7 @@ using HISOL
 using Test
 
 @testset "HISOL.jl" begin
-    # Write your tests here.
+    @testset "Phase-matching" begin
+        include("test_phasematching.jl")
+    end
 end
