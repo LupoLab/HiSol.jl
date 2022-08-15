@@ -1,5 +1,4 @@
 import Test: @test, @testset
-import Printf: @sprintf
 using HISOL
 import Luna.Tools: pressureRDW
 
