@@ -1,5 +1,6 @@
 module Solitons
 import HISOL: HCF, Data
+import HISOL.HCF: intensity_modeavg
 import Roots: find_zero
 import Luna.PhysData: wlfreq, c, ε_0, γ3_gas, pressure
 
@@ -13,6 +14,11 @@ function T0P0(τfwhm, energy)
     T0 = τfwhm_to_T0(τfwhm)
     P0 = energy/2T0
     T0, P0
+end
+
+function intensity_modeavg(a, τfwhm, energy; kwargs...)
+    _, P0 = T0P0(τfwhm, energy)
+    intensity_modeavg(a, P0; kwargs...)
 end
 
 function β_sol(a, gas, pressure, λ0, τfwhm, energy; kwargs...)

@@ -54,6 +54,8 @@ Aeff0(;n=1, m=1, kind=:HE) = Aeff_Jintg(n, get_unm(n, m, kind), kind)
 
 Aeff(a; kwargs...) = a^2 * Aeff0(kwargs...)
 
+intensity_modeavg(a, P0; kwargs...) = P0/Aeff(a; kwargs...)
+
 function γ(a, gas, pressure, λ0; kwargs...)
     n2 = n2_gas(gas, pressure)
     ω0 = wlfreq(λ0)
