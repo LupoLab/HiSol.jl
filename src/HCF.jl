@@ -68,7 +68,7 @@ function δ(gas, λ, λzd; kwargs...)
     get_unm(kwargs...)^2 * λ^3/(8π^3*c^2) * (fβ2(gas, λ)/fβ2(gas, λzd) - 1)
 end
 
-function ZDW(a, gas, pressure; λmin=100e-9, λmax=3e-6, kwargs...)
+function ZDW(a, gas, pressure; λmin=Data.λmin[gas], λmax=3e-6, kwargs...)
     ubω = 2π*c/λmin
     lbω = 2π*c/λmax
     ω0 = missing

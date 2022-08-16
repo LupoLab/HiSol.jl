@@ -54,7 +54,7 @@ function RDW_wavelength(a, gas, pressure, λ0, τfwhm=Inf, energy=0; kwargs...)
     β_s = β_sol(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
 
     lbω = wlfreq(λzd)
-    ubω = wlfreq(70e-9)
+    ubω = wlfreq(Data.λmin[gas])
 
     ωRDW = missing
     try

@@ -2,6 +2,17 @@ module Data
 import Luna.Maths: derivative
 import Luna.PhysData: wlfreq, sellmeier_gas
 
+# minimum wavelengths to use in root-finding functions
+# determined by first UV resonance in the sellmeier expansion
+λmin = Dict(
+    :Xe => 115e-9,
+    :Kr => 102e-9,
+    :Ar => 91e-9,
+    :Ne => 77e-9,
+    :He => 89e-9,
+    :HeJ => 57e-9
+)
+
 function γ1(gas)
     s = sellmeier_gas(gas)
     λ -> s(1e6λ)
