@@ -3,6 +3,7 @@ import Luna.PhysData: ref_index, c, ε_0, wlfreq, sellmeier_gas, density, n2_gas
 import Luna.Capillary: get_unm, Aeff_Jintg
 import Luna.Maths: derivative
 import Roots: find_zero
+import HISOL: Data
 
 export α, β, dB_per_m, loss_length, transmission, Leff, dispersion, Aeff, Aeff0
 
