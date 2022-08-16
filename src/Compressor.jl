@@ -79,6 +79,6 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     t = transmission(flength, aopt, λ0)
     @debug(@sprintf("Results: a = %.3f μm, %.2f m long, transmission %.4f",
                     1e6aopt, flength, t))
-    return aopt, flength, t
+    return aopt, flength, pr, t
 end
 end
