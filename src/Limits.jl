@@ -89,4 +89,6 @@ function Nmax(args...; S_ion=10, S_sf=5, kwargs...)
     )
 end
 
+Nmin(λ_target, λ0, τfwhm) = 1.15 + (0.04 + 0.3*log10(λ0/λ_target)) *c*τfwhm/λ0
+
 end
