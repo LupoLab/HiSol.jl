@@ -98,6 +98,33 @@ function RDW_density(λ_target, a, gas, λ0, τfwhm=Inf, energy=0; kwargs...)
     top/bot
 end
 
-RDW_pressure(λ_target, a, gas, args...; kwargs...) = pressure(gas, RDW_density(λ_target, a, gas, args...; kwargs...))
+RDW_pressure(λ_target, a, gas, args...; kwargs...) = pressure(
+    gas,
+    RDW_density(λ_target, a, gas, args...; kwargs...)
+)
+
+"""
+    RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
+
+Given pump wavelength `λ0`, RDW wavelength `λ_target`, and the `gas` species,
+find the corresponding zero-dispersion wavelength.
+"""
+function RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
+    ρasq_rdw = Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0)
+    u_nm = HCF.get_unm(kwargs...)
+
+    ω_target = wlfreq(λ_target)
+    ω0 = wlfreq(λ0)
+    ωguess = (ω_target + 2ω0)/3 # calculated value for only GVD (β₂) and TOD (β₃)
+    ωzd = missing
+    try
+        ωzd = find_zero(ωguess) do ω
+            u_nm^2/(2π^2*HCF.fβ2(gas, wlfreq(ω))) - ρasq_rdw
+        end
+    catch
+    end
+
+    return wlfreq(ωzd)
+end
 
 end
