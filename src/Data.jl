@@ -30,4 +30,13 @@ end
 
 dγ1dλ(gas, λ, n) = derivative(γ1(gas), λ, n)
 
+function n2_solid(material)
+    if material == :SiO2
+        return 2.6e-20
+    elseif material == :MgF2
+        # R. DeSalvo et al., IEEE J. Q. Elec. 32, 10 (1996).
+        return 5.79e-21
+    end
+end
+
 end
