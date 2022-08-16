@@ -3,7 +3,7 @@ import Luna.PhysData: density, pressure, n2_gas, γ3_gas, ε_0, c, ionisation_po
 import Luna.Ionisation: barrier_suppression
 import Luna.Tools: field_to_intensity
 import HISOL.Solitons: τfwhm_to_T0, T0P0, Δβwg, Δβρ
-import HISOL.HCF: Aeff0, δ, fβ2, get_unm
+import HISOL.HCF: Aeff0, δ, fβ2, get_unm, ZDW
 
 function critical_power(gas, pressure, λ)
     # Fibich and Gaeta, Optics Letters 25, 335 (2000)
@@ -67,11 +67,26 @@ function Nmax_ion(λzd, gas, λ0, τfwhm; S_ion=10, kwargs...)
     sqrt(T0^2*n2_0*Isupp*u_nm^2 / (S_ion*π*λ0*abs(δ(gas, λ0, λzd; kwargs...))*fβ2(gas, λzd)))
 end
 
+function Nmax_ion(a, gas, pressure, λ0, τfwhm; S_ion=10, kwargs...)
+    Nmax_ion(ZDW(a, gas, pressure; kwargs...), gas, λ0, τfwhm; S_ion, kwargs...)
+end
+
 function Nmax_sf(λzd, gas, λ0, τfwhm; S_sf=5, kwargs...)
     # eq. (S15) in Supplementary, Travers et al., Nat. Phot. 13, 547 (2019)
     # But with factor in Pcrit of 1.86225 instead of 3
     T0 = τfwhm_to_T0(τfwhm)
     sqrt(1.86225T0^2*λ0/(3*S_sf*abs(δ(gas, λ0, λzd))))
+end
+
+function Nmax_sf(a, gas, pressure, λ0, τfwhm; S_sf=5, kwargs...)
+    Nmax_sf(ZDW(a, gas, pressure; kwargs...), gas, λ0, τfwhm; S_sf, kwargs...)
+end
+
+function Nmax(args...; S_ion=10, S_sf=5, kwargs...)
+    min(
+        Nmax_ion(λzd, gas, λ0, τfwhm; S_ion, kwargs...),
+        Nmax_sf(λzd, gas, λ0, τfwhm; S_sf, kwargs...)
+    )
 end
 
 end

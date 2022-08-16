@@ -35,6 +35,8 @@ end
         # compare to HISOL.jl
         Nmax = HISOL.Limits.Nmax_ion(λzdi, gi, λ0i, τi; S_ion)
         @test isapprox(NmaxLuna, Nmax, rtol=1e-3)
+        # Compare calculating via core radius and pressure
+        @test isapprox(Nmax, HISOL.Limits.Nmax_ion(a, gi, pressure, λ0i, τi), rtol=1e-5)
     end
 end
 
@@ -61,5 +63,7 @@ end
         # compare to HISOL.jl
         Nmax = HISOL.Limits.Nmax_sf(λzdi, gi, λ0i, τi; S_sf)
         @test isapprox(NmaxLuna, Nmax, rtol=1e-3)
+        # Compare calculating via core radius and pressure
+        @test isapprox(Nmax, HISOL.Limits.Nmax_sf(a, gi, pressure, λ0i, τi), rtol=1e-5)
     end
 end
