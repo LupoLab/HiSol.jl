@@ -12,7 +12,7 @@ get_unm(;n=1, m=1, kind=:HE) = get_unm(n, m, kind)
 function α(a::Number, λ::Number; kwargs...)
     u_nm = get_unm(kwargs...)
     ω = wlfreq(λ)
-    ν = ref_index(:SiO2, λ) # ν = n_glass/n_gas with n_gas ≈ 1
+    ν = real(ref_index(:SiO2, λ)) # ν = n_glass/n_gas with n_gas ≈ 1
     2*c^2*u_nm^2/(a^3*ω^2) * (ν^2 + 1)/(2*sqrt(ν^2-1))
 end
 
