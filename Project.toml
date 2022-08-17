@@ -7,6 +7,7 @@ version = "0.1.0"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 Luna = "30eb0fb0-5147-11e9-3356-d75b018717ce"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 
 [compat]
