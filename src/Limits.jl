@@ -1,9 +1,10 @@
 module Limits
-import Luna.PhysData: density, pressure, n2_gas, γ3_gas, ε_0, c, ionisation_potential
+import Luna.PhysData: density, pressure, γ3_gas, ε_0, c, ionisation_potential
 import Luna.Ionisation: barrier_suppression
 import Luna.Tools: field_to_intensity
 import HISOL.Solitons: τfwhm_to_T0, T0P0, Δβwg, Δβρ
 import HISOL.HCF: Aeff0, δ, fβ2, get_unm, ZDW
+import HISOL.Data: n2_0, n2_gas
 
 function critical_power(gas, pressure, λ)
     # Fibich and Gaeta, Optics Letters 25, 335 (2000)
@@ -61,10 +62,10 @@ end
 function Nmax_ion(λzd, gas, λ0, τfwhm; S_ion=10, kwargs...)
     # eq. (S16) in Supplementary, Travers et al., Nat. Phot. 13, 547 (2019)
     Isupp = barrier_suppression_intensity(gas)
-    n2_0 = n2_gas(gas, 1)/density(gas, 1) # n2 at reference pressure
+    n20 = n2_0(gas)
     T0 = τfwhm_to_T0(τfwhm)
     u_nm = get_unm(kwargs...)
-    sqrt(T0^2*n2_0*Isupp*u_nm^2 / (S_ion*π*λ0*abs(δ(gas, λ0, λzd; kwargs...))*fβ2(gas, λzd)))
+    sqrt(T0^2*n20*Isupp*u_nm^2 / (S_ion*π*λ0*abs(δ(gas, λ0, λzd; kwargs...))*fβ2(gas, λzd)))
 end
 
 function Nmax_ion(a, gas, pressure, λ0, τfwhm; S_ion=10, kwargs...)

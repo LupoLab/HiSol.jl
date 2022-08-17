@@ -122,10 +122,12 @@ function RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
     ω_target = wlfreq(λ_target)
     ω0 = wlfreq(λ0)
     ωguess = (ω_target + 2ω0)/3 # calculated value for only GVD (β₂) and TOD (β₃)
+
+    fβ2 = HCF.fβ2(gas)
     ωzd = missing
     try
         ωzd = find_zero(ωguess) do ω
-            u_nm^2/(2π^2*HCF.fβ2(gas, wlfreq(ω))) - ρasq_rdw
+            u_nm^2/(2π^2*fβ2(wlfreq(ω))) - ρasq_rdw
         end
     catch
     end
