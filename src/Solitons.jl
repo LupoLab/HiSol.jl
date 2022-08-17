@@ -4,7 +4,7 @@ import HISOL.HCF: intensity_modeavg
 import Roots: find_zero
 import Luna.PhysData: wlfreq, c, ε_0, γ3_gas, pressure
 
-T0fac = (2*acosh(sqrt(2)))
+const T0fac = (2*acosh(sqrt(2)))
 
 τfwhm_to_T0(τfwhm) = τfwhm / T0fac
 
