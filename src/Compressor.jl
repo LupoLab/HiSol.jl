@@ -179,6 +179,5 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     plt.suptitle(@sprintf("Input peak power: %.2f GW | Pressure: %.2f bar", P0*1e-9, pr))
 
     return fig
-
 end
 end

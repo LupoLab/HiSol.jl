@@ -1,6 +1,6 @@
 module Data
 import Luna.Maths: derivative
-import Luna.PhysData: wlfreq, sellmeier_gas
+import Luna.PhysData: wlfreq, sellmeier_gas, m_u, roomtemp, k_B
 
 # minimum wavelengths to use in root-finding functions
 # determined by first UV resonance in the sellmeier expansion
@@ -38,5 +38,47 @@ function n2_solid(material)
         return 5.79e-21
     end
 end
+
+function gas_viscosity(gas)
+    if gas == :He
+        return 19.6e-6
+    elseif gas == :Ne
+        return 31.9e-6
+    elseif gas == :Ar
+        return 22.11e-6
+    elseif gas == :Kr
+        return 1.4257*gas_viscosity(N2)
+    elseif gas == :Xe
+        return 1.2964*gas_viscosity(N2)
+    elseif gas == :H
+        return 8.8e-6
+    elseif gas == :N2
+        return 17.5e-6
+    else
+        error("Unknown gas $gas")
+    end
+end
+
+function gas_mass(gas)
+    if gas == :He
+        m = 2
+    elseif gas == :Ne
+        m = 20.1797
+    elseif gas == :Ar
+        m = 39.948
+    elseif gas == :Kr
+        m = 83.798
+    elseif gas == :Xe
+        m = 131.293
+    elseif gas == :H
+        m = 1
+    else
+        error("Unknown gas $gas")
+    end
+
+    return m*m_u
+end
+
+mean_speed(gas, T=roomtemp) = sqrt(8*k_B*T/(π*gas_mass(gas)))
 
 end
