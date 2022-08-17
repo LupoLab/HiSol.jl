@@ -84,8 +84,8 @@ end
 
 function Nmax(args...; S_ion=10, S_sf=5, kwargs...)
     min(
-        Nmax_ion(λzd, gas, λ0, τfwhm; S_ion, kwargs...),
-        Nmax_sf(λzd, gas, λ0, τfwhm; S_sf, kwargs...)
+        Nmax_ion(args...; S_ion, kwargs...),
+        Nmax_sf(args...; S_sf, kwargs...)
     )
 end
 

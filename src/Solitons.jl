@@ -28,7 +28,7 @@ function β_sol(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
 end
 
 function N(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
-    β2 = HCF.dispersion(a, λ0, gas, pressure, 2; kwargs...)
+    β2 = HCF.dispersion(a, gas, pressure, λ0, 2; kwargs...)
     T0, P0 = T0P0(τfwhm, energy)
     γ_ = HCF.γ(a, gas, pressure, λ0)
     sqrt(γ_*P0*T0^2/abs(β2))
@@ -42,7 +42,7 @@ end
 
 function dispersion_length(a, gas, pressure, λ0, τfwhm; kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
-    β2 = HCF.dispersion(a, λ0, gas, pressure, 2; kwargs...)
+    β2 = HCF.dispersion(a, gas, pressure, λ0, 2; kwargs...)
     T0^2/abs(β2)
 end
 

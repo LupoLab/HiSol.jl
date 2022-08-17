@@ -7,5 +7,6 @@ include("Limits.jl")
 include("Focusing.jl")
 include("Compressor.jl")
 include("GasFlow.jl")
+include("Design.jl")
 
 end

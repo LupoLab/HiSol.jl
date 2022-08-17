@@ -16,9 +16,9 @@ function α(a::Number, λ::Number; kwargs...)
     2*c^2*u_nm^2/(a^3*ω^2) * (ν^2 + 1)/(2*sqrt(ν^2-1))
 end
 
-dB_per_m(a...; kw...) = 10/np.log(10)*α(a...; kw...)
+dB_per_m(args...; kw...) = 10/np.log(10)*α(args...; kw...)
 
-loss_length(a...; kw...) = 1/α(args...; kw...)
+loss_length(args...; kw...) = 1/α(args...; kw...)
 
 transmission(length, a...; kw...) = exp(-α(a...; kw...)*length) 
 
