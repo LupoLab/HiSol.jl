@@ -4,28 +4,28 @@ import Luna: PhysData
 import HISOL.Solitons: Δβwg, Δβρ, T0P0, fission_length, N, RDW_to_ZDW
 import HISOL.Limits: critical_intensity, barrier_suppression_intensity, Nmin, Nmax
 import HISOL.HCF: intensity_modeavg, loss_length, ZDW
-import HISOL.Focusing: window_distance
+import HISOL.Focusing: window_distance, mirror_distance
 
 function energy_maxlength(λ_target, gas, λ0, τfwhm, energy, maxlength;
-                          exit_window=true, thickness=1e-3, material=:SiO2, zr_frac=0.2,
+                          thickness=1e-3, material=:SiO2, zr_frac=0.2,
+                          LIDT=2000, S_fluence=5,
+                          entrance_window=true, exit_window=true,
                           kwargs...)
     ρasq = Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0; kwargs...)
 
     Icrit = critical_intensity(λ_target, gas, λ0; kwargs...)
     Isupp = barrier_suppression_intensity(gas)
 
-    windowfac = exit_window ? 2 : 1
-
-    T0, P0 = T0P0(τfwhm, energy)
+    _, P0 = T0P0(τfwhm, energy)
 
     function params(a)
         density = ρasq/a^2
         pressure = PhysData.pressure(gas, density)
         intensity = intensity_modeavg(a, P0; kwargs...)
 
-        dwin = window_distance(a, λ0, energy, τfwhm, thickness; material, zr_frac)
-        dwin *= windowfac
-        flength = max(maxlength-dwin, 0)
+        global flength = max_flength(a, λ0, energy, τfwhm, maxlength;
+                                     thickness, material, zr_frac, LIDT, S_fluence,
+                                     entrance_window, exit_window)
         Nsol = N(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
 
         Lfiss = fission_length(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
