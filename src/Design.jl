@@ -125,7 +125,33 @@ function min_energy(λ_target, λ0, gas, τfwhm; S_sf=5, S_ion=10, S_loss=1, kwa
     e, a
 end
 
-function max_energy(λ_target, λ0, gas, τfwhm, maxlength; S_sf=5, S_ion=10, S_fiss=1.5,
+"""
+    max_energy(λ_target, λ0, gas, τfwhm, maxlength; kwargs...)
+
+Calculate the maximum energy and core radius that can be used for an RDW
+emission system for RDW wavelength `λ_target` driven by pulses at `λ0` with duration
+`τfwhm` using `gas`, assuming the maximum available space is `maxlength`.
+
+# Keyword arguments
+## Entrance/exit windows
+- `entrance_window`: Whether an entrance window is present (if `false`, use mirror damage threshold instead)
+- `exit_window`: Same but for exit window
+- `thickness` : thickness of the windows (default 1 mm)
+- `material`: window material (default silica, SiO2)
+- `LIDT`: laser damage threshold of the mirrors (default 2000 J/m²)
+
+## Safety factors
+- `S_sf` (default 5): Maximum fraction of the critical power in the pump pulse
+- `S_ion` (default 10): Maximum fraction of barrier-suppression intensity in the pump pulse
+- `S_fiss` (default 1.5): Mininum HCF length is `S_fiss` times the fission length
+- `zr_frac` (default 0.2): Maximum Kerr-lens-induced focal shift as a fraction
+                           of the Rayleigh length.
+- `S_fluence` (default 5): Maximum fraction of LIDT allowed on the end mirrors
+
+
+"""
+function max_energy(λ_target, λ0, gas, τfwhm, maxlength;
+                    S_sf=5, S_ion=10, S_fiss=1.5,
                     thickness=1e-3, material=:SiO2, zr_frac=0.2,
                     LIDT=2000, S_fluence=5,
                     entrance_window=true, exit_window=true, kwargs...)
