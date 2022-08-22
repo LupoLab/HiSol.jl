@@ -46,10 +46,30 @@ function dispersion_length(a, gas, pressure, λ0, τfwhm; kwargs...)
     T0^2/abs(β2)
 end
 
+"""
+    fission_length(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
+
+Calculate the fission length for HCF with core radius `a` filled with
+`pressure` bars of `gas` when pumping at `λ0` with duration `τfwhm`
+and pulse `energy`. Further `kwargs` `m`, `n` and `kind` determine the HCF mode.
+"""
 function fission_length(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
     L_d = dispersion_length(a, gas, pressure, λ0, τfwhm; kwargs...)
     L_nl = nonlinear_length(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
     sqrt(L_d*L_nl)
+end
+
+"""
+    fission_length(a, gas, λ0, τfwhm; N, λzd, kwargs...)
+
+Calculate the fission length for HCF with core radius `a` filled with `gas`
+such that the ZDW is `λzd` when pumping at `λ0` with a duration `τfwhm` and
+soliton order `N`. Further `kwargs` `m`, `n` and `kind` determine the HCF mode.
+"""
+function fission_length(a, gas, λ0, τfwhm; N, λzd, kwargs...)
+    T0 = τfwhm_to_T0(τfwhm)
+    δ = HCF.δ(gas, λ0, λzd; kwargs...)
+    T0^2*a^2/(N*abs(δ))
 end
 
 function RDW_wavelength(a, gas, pressure, λ0, τfwhm=Inf, energy=0; kwargs...)
@@ -113,7 +133,8 @@ RDW_pressure(λ_target, a, gas, args...; kwargs...) = pressure(
     RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
 
 Given pump wavelength `λ0`, RDW wavelength `λ_target`, and the `gas` species,
-find the corresponding zero-dispersion wavelength.
+find the corresponding zero-dispersion wavelength. Further `kwargs`
+`m`, `n` and `kind` determine the HCF mode.
 """
 function RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
     ρasq_rdw = Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0)
@@ -133,6 +154,21 @@ function RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
     end
 
     return wlfreq(ωzd)
+end
+
+"""
+    N_to_energy(N, a, gas, λ0, λzd, τfwhm; kwargs...)
+
+Convert soliton order `N` to energy for core radius `a` filled with `gas`
+such that the ZDW is `λzd` and when pumping at `λ0` with a duration `τfwhm`.
+Further `kwargs` `m`, `n` and `kind` determine the HCF mode.
+"""
+function N_to_energy(N, a, gas, λ0, λzd, τfwhm; kwargs...)
+    T0 = τfwhm_to_T0(τfwhm)
+    β2 = HCF.δ(gas, λ0, λzd; kwargs...)/a^2
+    γ = HCF.γ(a, gas, λ0; λzd, kwargs...)
+    P0 = N^2*abs(β2)/(T0^2*γ)
+    2*T0*P0
 end
 
 end

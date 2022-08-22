@@ -16,6 +16,13 @@ function α(a::Number, λ::Number; kwargs...)
     2*c^2*u_nm^2/(a^3*ω^2) * (ν^2 + 1)/(2*sqrt(ν^2-1))
 end
 
+function αbar_a(λ::Number; kwargs...)
+    u_nm = get_unm(kwargs...)
+    ω = wlfreq(λ)
+    ν = real(ref_index(:SiO2, λ)) # ν = n_glass/n_gas with n_gas ≈ 1
+    2*c^2*u_nm^2/ω^2 * (ν^2 + 1)/(2*sqrt(ν^2-1))
+end
+
 dB_per_m(args...; kw...) = 10/np.log(10)*α(args...; kw...)
 
 loss_length(args...; kw...) = 1/α(args...; kw...)
@@ -66,6 +73,13 @@ function γ(a, gas, pressure, λ0; kwargs...)
     n2 = Data.n2_gas(gas, pressure)
     ω0 = wlfreq(λ0)
     ω0/c*n2/Aeff(a; kwargs...)
+end
+
+function γ(a, gas, λ0; λzd, kwargs...)
+    n20 = Data.n2_0(gas)
+    u_nm = get_unm(kwargs...)
+    f = fβ2(gas, λzd)
+    2*n20*u_nm^2/(3π*a^4*λ0*f)
 end
 
 # eq. S5 of Supplementary, Travers et al., Nat. Phot. 13, 547 (2019)
