@@ -148,7 +148,7 @@ emission system for RDW wavelength `λ_target` driven by pulses at `λ0` with du
                            of the Rayleigh length.
 - `S_fluence` (default 5): Maximum fraction of LIDT allowed on the end mirrors
 
-
+Further `kwargs` `m`, `n` and `kind` determine the HCF mode.
 """
 function max_energy(λ_target, λ0, gas, τfwhm, maxlength;
                     S_sf=5, S_ion=10, S_fiss=1.5,
