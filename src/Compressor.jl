@@ -3,7 +3,8 @@ import HISOL.Limits: critical_density, barrier_suppression_intensity
 import HISOL.Solitons: T0P0
 import HISOL.HCF: Aeff0, Leff, transmission, intensity_modeavg
 import HISOL.Focusing: max_flength
-import Luna.PhysData: pressure, n2_gas
+import Luna.PhysData: pressure
+import Luna: PhysData
 import Logging: @debug, @info
 import Printf: @sprintf
 import Roots: find_zero
@@ -18,7 +19,7 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy)
     ρ = ρcrit/S_sf
     pr = pressure(gas, ρ)
-    n2 = n2_gas(gas, pr)
+    n2 = PhysData.n2(gas, pr)
     @debug(@sprintf("ρcrit: %.4e m⁻³", ρcrit))
     @debug(@sprintf("ρ: %.4e m⁻³", ρ))
     @debug(@sprintf("pressure: %.3f bar", pr))
@@ -97,7 +98,7 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy)
     ρ = ρcrit/S_sf
     pr = pressure(gas, ρ)
-    n2 = n2_gas(gas, pr)
+    n2 = PhysData.n2(gas, pr)
 
     _, P0 = T0P0(τfwhm_in, energy)
 
