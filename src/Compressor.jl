@@ -3,7 +3,8 @@ import HISOL.Limits: critical_density, barrier_suppression_intensity
 import HISOL.Solitons: T0P0
 import HISOL.HCF: Aeff0, Leff, transmission, intensity_modeavg
 import HISOL.Focusing: max_flength
-import Luna.PhysData: pressure, n2_gas
+import HISOL.Data: n2_gas
+import Luna.PhysData: pressure
 import Logging: @debug, @info
 import Printf: @sprintf
 import Roots: find_zero
