@@ -5,7 +5,7 @@ gas = :HeJ
 
 λ0 = 800e-9
 τfwhm = 10e-15
-energy = 50e-6
+energy = 100e-6
 
 maxlength = 2
 
