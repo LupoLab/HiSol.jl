@@ -2,15 +2,18 @@ module Compressor
 import HISOL.Limits: critical_density, barrier_suppression_intensity
 import HISOL.Solitons: T0P0
 import HISOL.HCF: Aeff0, Leff, transmission, intensity_modeavg
-import HISOL.Focusing: window_distance
-import Luna.PhysData: pressure, n2_gas
+import HISOL.Focusing: max_flength
+import HISOL.Data: n2_gas
+import Luna.PhysData: pressure
 import Logging: @debug, @info
 import Printf: @sprintf
 import Roots: find_zero
 import PyPlot: plt
 
 function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                  thickness=1e-3, material=:SiO2, zr_frac=0.2, S_sf=1.5, S_ion=10)
+                  thickness=1e-3, material=:SiO2, zr_frac=0.2,
+                  LIDT=2000, S_fluence=5, S_sf=1.5, S_ion=10,
+                  entrance_window=true, exit_window=true)
     factor = τfwhm_in/τfwhm_out
 
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy)
@@ -43,8 +46,9 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     # Find rough guess by decreasing the core size from something massive
     # This is a reliable way of finding out whether there is a solution
     while ~enough
-        Lwin = window_distance(aguess, λ0, energy, τfwhm_in, thickness; material, zr_frac)
-        global flength = maxlength - Lwin
+        global flength = max_flength(aguess, λ0, energy, τfwhm_in, maxlength;
+                                     thickness, material, zr_frac, LIDT, S_fluence,
+                                     entrance_window, exit_window)
         if flength <= 0
             @debug(@sprintf("a = %.1f μm: required window distance is too large",1e6aguess))
             aguess *= 0.9
@@ -70,9 +74,11 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
         aguess *= 0.9
     end
     @debug("Initial guess", 1e6*aguess)
+    @debug("Initial fibre length", flength)
     aopt = find_zero(aguess) do a
-        Lwin = window_distance(a, λ0, energy, τfwhm_in, thickness; material, zr_frac)
-        global flength = maxlength - Lwin
+        global flength = max_flength(a, λ0, energy, τfwhm_in, maxlength;
+                                     thickness, material, zr_frac, LIDT, S_fluence,
+                                     entrance_window, exit_window)
         γLeff_this = n2*k0/(A0*a^2)*Leff(flength, a, λ0)
         γLeff_this - γLeff
     end
@@ -84,8 +90,9 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 end
 
 function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                      thickness=1e-3, material=:SiO2, zr_frac=0.2, S_sf=1.5, S_ion=10,
-                      amin=10e-6, amax=500e-6, Na=512)
+                       thickness=1e-3, material=:SiO2, zr_frac=0.2, S_sf=1.5, S_ion=10,
+                       entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5,
+                       amin=10e-6, amax=500e-6, Na=512)
     factor = τfwhm_in/τfwhm_out
 
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy)
@@ -109,8 +116,9 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 
     a = collect(range(amin, amax, Na))
     flength = map(a) do ai
-        Lwin = window_distance(ai, λ0, energy, τfwhm_in, thickness; material, zr_frac)
-        max(maxlength - Lwin, 0)
+        max_flength(ai, λ0, energy, τfwhm_in, maxlength;
+                    thickness, material, zr_frac, LIDT, S_fluence,
+                    entrance_window, exit_window)
     end
     γLeff_a = @. n2*k0/(A0*a^2)*Leff(flength, a, λ0)
     t = transmission.(flength, a, λ0)
@@ -119,7 +127,7 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 
     try
         global aopt, flopt, _, topt = optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                        thickness, material, zr_frac, S_sf, S_ion)
+                        thickness, material, zr_frac, S_sf, S_ion, LIDT, S_fluence, entrance_window, exit_window)
         global intopt = P0/(A0*aopt^2)
     catch
         global aopt = missing
