@@ -1,6 +1,6 @@
-name = "HISOL"
+name = "HiSol"
 uuid = "b3f70d9b-428d-48dd-a02b-de2d62b823ae"
-authors = ["Christian Brahms <c.brahms@hw.ac.uk>"]
+authors = ["Christian Brahms <c.brahms@hw.ac.uk>", "John Travers <j.travers@hw.ac.uk>"]
 version = "0.1.0"
 
 [deps]
