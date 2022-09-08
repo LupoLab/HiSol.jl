@@ -150,7 +150,7 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     plt.subplot(1, 4, 2)
     plt.plot(1e6a, flength)
     if ~ismissing(aopt)
-        plt.plot(1e6aopt, flopt, "o"; color="k", label=@sprintf("%.1f m", flopt))
+        plt.plot(1e6aopt, flopt, "o"; color="k", label=@sprintf("%.3f m", flopt))
         plt.legend()
     end
     plt.xlim(1e6.*extrema(a))
