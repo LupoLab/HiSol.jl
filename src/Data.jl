@@ -46,6 +46,9 @@ function n2_solid(material)
     elseif material == :MgF2
         # R. DeSalvo et al., IEEE J. Q. Elec. 32, 10 (1996).
         return 5.79e-21
+    elseif material == :CaF2
+        # Ensley Optics Express Vol. 27, No. 26 / 23 December 2019 
+        return 1.8e-20
     end
 end
 
