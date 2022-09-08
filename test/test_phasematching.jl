@@ -1,5 +1,4 @@
 import Test: @test, @testset
-import Printf: @sprintf
 using HISOL
 import Luna.Tools: pressureRDW
 
@@ -35,4 +34,17 @@ end
         pLuna = pressureRDW(a, gas, λi, λ0)
         @test isapprox(p, pLuna, rtol=1e-3)
     end
+end
+
+@testset "RDW to ZDW conversion" begin
+    a = 125e-6
+    gas = :HeJ
+    λ0 = 800e-9
+    @testset "$pr bar" for pr in collect(range(0.2, 6, 16))
+        λRDW = HISOL.Solitons.RDW_wavelength(a, gas, pr, λ0)
+        λzd = HISOL.HCF.ZDW(a, gas, pr)
+        λzdp = HISOL.Solitons.RDW_to_ZDW(λ0, λRDW, gas)
+        @test isapprox(λzd, λzdp; rtol=1e-6)
+    end
+
 end
