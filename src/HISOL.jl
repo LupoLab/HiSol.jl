@@ -1,4 +1,4 @@
-module HISOL
+module HiSol
 
 include("Data.jl")
 include("HCF.jl")
