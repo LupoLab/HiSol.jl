@@ -1,14 +1,14 @@
 import Test: @test, @testset
-using HISOL
+using HiSol
 import Luna: Tools
 import Roots: find_zero
 
 @testset "barrier suppression intensity" begin
-    @test isapprox(HISOL.Limits.barrier_suppression_intensity(:Xe), 8.66320e17, rtol=1e-4)
-    @test isapprox(HISOL.Limits.barrier_suppression_intensity(:Kr), 1.53336e18, rtol=1e-4)
-    @test isapprox(HISOL.Limits.barrier_suppression_intensity(:Ar), 2.46849e18, rtol=1e-4)
-    @test isapprox(HISOL.Limits.barrier_suppression_intensity(:Ne), 8.65198e18, rtol=1e-4)
-    @test isapprox(HISOL.Limits.barrier_suppression_intensity(:He), 1.46225e19, rtol=1e-4)
+    @test isapprox(HiSol.Limits.barrier_suppression_intensity(:Xe), 8.66320e17, rtol=1e-4)
+    @test isapprox(HiSol.Limits.barrier_suppression_intensity(:Kr), 1.53336e18, rtol=1e-4)
+    @test isapprox(HiSol.Limits.barrier_suppression_intensity(:Ar), 2.46849e18, rtol=1e-4)
+    @test isapprox(HiSol.Limits.barrier_suppression_intensity(:Ne), 8.65198e18, rtol=1e-4)
+    @test isapprox(HiSol.Limits.barrier_suppression_intensity(:He), 1.46225e19, rtol=1e-4)
 end
 
 ##
@@ -21,7 +21,7 @@ end
     @testset "$gi - λ0 $(1e9λ0i) nm - λzd $(1e9λ0i*frac) - $(1e15τi) fs" for gi in gas, λ0i in λ0, frac in λzdfrac, τi in τ
         λzdi = λ0i*frac
         S_ion = 10
-        Isupp = HISOL.Limits.barrier_suppression_intensity(gi)
+        Isupp = HiSol.Limits.barrier_suppression_intensity(gi)
         # find energy where peak intensity reaches Isupp/S_ion purely using functions from Luna
         pressure = Tools.pressureZDW(a, gi, λzdi)
         EmaxLuna = find_zero(500e-6) do E
@@ -32,11 +32,11 @@ end
         # get max soliton order from max energy
         p = Tools.capillary_params(EmaxLuna, τi, λ0i, a, gi; P=pressure)
         NmaxLuna = p.N
-        # compare to HISOL.jl
-        Nmax = HISOL.Limits.Nmax_ion(λzdi, gi, λ0i, τi; S_ion)
+        # compare to HiSol.jl
+        Nmax = HiSol.Limits.Nmax_ion(λzdi, gi, λ0i, τi; S_ion)
         @test isapprox(NmaxLuna, Nmax, rtol=1e-3)
         # Compare calculating via core radius and pressure
-        @test isapprox(Nmax, HISOL.Limits.Nmax_ion(a, gi, pressure, λ0i, τi), rtol=1e-5)
+        @test isapprox(Nmax, HiSol.Limits.Nmax_ion(a, gi, pressure, λ0i, τi), rtol=1e-5)
     end
 end
 
@@ -60,10 +60,10 @@ end
         # get max soliton order from max energy
         p = Tools.capillary_params(EmaxLuna, τi, λ0i, a, gi; P=pressure)
         NmaxLuna = p.N
-        # compare to HISOL.jl
-        Nmax = HISOL.Limits.Nmax_sf(λzdi, gi, λ0i, τi; S_sf)
+        # compare to HiSol.jl
+        Nmax = HiSol.Limits.Nmax_sf(λzdi, gi, λ0i, τi; S_sf)
         @test isapprox(NmaxLuna, Nmax, rtol=1e-3)
         # Compare calculating via core radius and pressure
-        @test isapprox(Nmax, HISOL.Limits.Nmax_sf(a, gi, pressure, λ0i, τi), rtol=1e-5)
+        @test isapprox(Nmax, HiSol.Limits.Nmax_sf(a, gi, pressure, λ0i, τi), rtol=1e-5)
     end
 end
