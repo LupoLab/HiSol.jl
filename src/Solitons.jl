@@ -1,6 +1,6 @@
 module Solitons
-import HISOL: HCF, Data
-import HISOL.HCF: intensity_modeavg
+import HiSol: HCF, Data
+import HiSol.HCF: intensity_modeavg
 import Roots: find_zero
 import Luna.PhysData: wlfreq, c, ε_0, γ3_gas, pressure
 

@@ -1,6 +1,6 @@
 module Focusing
-import HISOL.Data: n2_solid
-import HISOL.Solitons: T0P0
+import HiSol.Data: n2_solid
+import HiSol.Solitons: T0P0
 
 """
     window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, zr_frac=0.2)

@@ -1,9 +1,9 @@
 module Compressor
-import HISOL.Limits: critical_density, barrier_suppression_intensity
-import HISOL.Solitons: T0P0
-import HISOL.HCF: Aeff0, Leff, transmission, intensity_modeavg
-import HISOL.Focusing: max_flength
-import HISOL.Data: n2_gas
+import HiSol.Limits: critical_density, barrier_suppression_intensity
+import HiSol.Solitons: T0P0
+import HiSol.HCF: Aeff0, Leff, transmission, intensity_modeavg
+import HiSol.Focusing: max_flength
+import HiSol.Data: n2_gas
 import Luna.PhysData: pressure
 import Logging: @debug, @info
 import Printf: @sprintf

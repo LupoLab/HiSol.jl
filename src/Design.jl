@@ -2,11 +2,11 @@ module Design
 import PyPlot: plt
 import Luna: PhysData
 import Luna.Plotting: cmap_colours
-import HISOL.Solitons: Δβwg, Δβρ, T0P0, fission_length, N, RDW_to_ZDW, τfwhm_to_T0, N_to_energy
-import HISOL.Limits: critical_intensity, barrier_suppression_intensity, Nmin, Nmax
-import HISOL.HCF: intensity_modeavg, loss_length, ZDW, αbar_a, δ, fβ2, get_unm, Aeff0
-import HISOL.Focusing: max_flength
-import HISOL.Data: n2_0, n2_solid
+import HiSol.Solitons: Δβwg, Δβρ, T0P0, fission_length, N, RDW_to_ZDW, τfwhm_to_T0, N_to_energy
+import HiSol.Limits: critical_intensity, barrier_suppression_intensity, Nmin, Nmax
+import HiSol.HCF: intensity_modeavg, loss_length, ZDW, αbar_a, δ, fβ2, get_unm, Aeff0
+import HiSol.Focusing: max_flength
+import HiSol.Data: n2_0, n2_solid
 
 function energy_maxlength(λ_target, gas, λ0, τfwhm, energy, maxlength;
                           thickness=1e-3, material=:SiO2, zr_frac=0.2,
