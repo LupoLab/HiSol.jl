@@ -1,5 +1,5 @@
 module GasFlow
-import HISOL.Data: mean_speed, gas_viscosity
+import HiSol.Data: mean_speed, gas_viscosity
 import Roots: find_zero
 
 """
