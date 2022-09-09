@@ -32,11 +32,12 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v1
-      - run: julia --project -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/LupoLab/Luna.jl", rev="master"));'
+      - uses: julia-actions/julia-buildpkg@v1
         env:
           PYTHON: # remove PYTHON env variable to make sure packages are installed
-      - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        env:
+          PYTHON: # remove PYTHON env variable to make sure packages are installed
   docs:
     name: Documentation
     runs-on: ubuntu-latest
@@ -47,16 +48,16 @@ jobs:
       - uses: julia-actions/setup-julia@v1
         with:
           version: '1'
-      - run: julia --project -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/LupoLab/Luna.jl", rev="master"));'
-        env:
-          PYTHON: # remove PYTHON env variable to make sure packages are installed
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PYTHON: # remove PYTHON env variable to make sure packages are installed
       - run: |
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
             using HISOL
             DocMeta.setdocmeta!(HISOL, :DocTestSetup, :(using HISOL); recursive=true)
             doctest(HISOL)'
+        env:
+          PYTHON: # remove PYTHON env variable to make sure packages are installed
