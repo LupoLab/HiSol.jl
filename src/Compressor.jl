@@ -2,7 +2,7 @@ module Compressor
 import HiSol.Limits: critical_density, barrier_suppression_intensity
 import HiSol.Solitons: T0P0
 import HiSol.HCF: Aeff0, Leff, transmission, intensity_modeavg
-import HiSol.Focusing: max_flength
+import HiSol.Focusing: max_flength, diverged_beam
 import HiSol.Data: n2_gas
 import Luna.PhysData: pressure
 import Logging: @debug, @info
@@ -109,9 +109,11 @@ function params_maxlength(τfwhm_in, gas, λ0, energy, maxlength;
         t = transmission.(flength, a, λ0)
         intensity = P0/(A0*a^2)
         φnl = P0*γLeff
+        window_distance = (maxlength-flength)/2
+        beamsize_w0 = diverged_beam(a, λ0, window_distance)
         (;φnl=P0*γLeff, transmission=t, intensity, flength,
           broadening_factor=broadening_factor(φnl), pressure=pr, n2=n2,
-          P0=P0)
+          P0=P0, window_distance, beamsize_w0)
     end
 end
 
@@ -137,6 +139,8 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     intensity = getindex.(params, :intensity)
     P0 = params[1].P0
     pr = params[1].pressure
+    
+    t[flength .== 0] .= NaN
 
     try
         global aopt, flopt, _, topt = optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
@@ -200,7 +204,7 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     plt.subplots_adjust(top=0.9)
     plt.suptitle(@sprintf("Input peak power: %.2f GW | Pressure: %.2f bar", P0*1e-9, pr))
 
-    return fig
+    return fig, f
 end
 
 nonlinear_phase(broadfac) = sqrt(3*sqrt(3)/4 * (broadfac^2 - 1))
