@@ -76,6 +76,12 @@ function max_flength(a, λ0, energy, τfwhm, maxlength;
     max(maxlength - L_in - L_out, 0)
 end
 
+"""
+    diverged_beam(a, λ0, distance)
+
+Calculate the 1/e² beam radius for a beam at wavelength `λ0` at `distance`
+away from an HCF with core radius `a`.
+"""
 diverged_beam(a, λ0, distance) = distance*λ0/(π*0.64a)
 
 end
