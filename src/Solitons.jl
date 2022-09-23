@@ -40,11 +40,15 @@ function nonlinear_length(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
     1/(γ_*P0)
 end
 
+nonlinear_length(P0, γ_) = 1/(γ_*P0) 
+
 function dispersion_length(a, gas, pressure, λ0, τfwhm; kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
     β2 = HCF.dispersion(a, gas, pressure, λ0, 2; kwargs...)
     T0^2/abs(β2)
 end
+
+dispersion_length(T0, β2) = T0^2/abs(β2)
 
 """
     fission_length(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
@@ -146,11 +150,23 @@ function RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
 
     fβ2 = HCF.fβ2(gas)
     ωzd = missing
+    # fast method: start with initial guess
     try
         ωzd = find_zero(ωguess) do ω
             u_nm^2/(2π^2*fβ2(wlfreq(ω))) - ρasq_rdw
         end
     catch
+    end
+
+    # if fast method fails: λzd must be between λ_target and λ0
+    # this is much slower but more reliable
+    if ismissing(ωzd) || ωzd == 0
+        try
+            ωzd = find_zero((wlfreq(λ0), wlfreq(λ_target))) do ω
+                u_nm^2/(2π^2*fβ2(wlfreq(ω))) - ρasq_rdw
+            end
+        catch
+        end
     end
 
     return wlfreq(ωzd)
