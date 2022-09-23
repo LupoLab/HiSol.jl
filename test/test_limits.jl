@@ -44,8 +44,7 @@ end
 @testset "maximum soliton order - self-focusing" begin
     a = 350e-6
     τ = [5e-15, 10e-15, 30e-15]
-    # gas = [:Xe, :Kr, :Ar, :Ne, :HeJ]
-    gas = [:HeJ]
+    gas = [:Xe, :Kr, :Ar, :Ne, :HeJ]
     λ0 = [400e-9, 800e-9, 1200e-9, 2000e-9]
     λzdfrac = [1/2, 2/3, 3/4]
     @testset "$gi - λ0 $(1e9λ0i) nm - λzd $(1e9λ0i*frac) - $(1e15τi) fs" for gi in gas, λ0i in λ0, frac in λzdfrac, τi in τ
