@@ -1,16 +1,16 @@
-using HISOL
+using HiSol
 using Documenter
 
-DocMeta.setdocmeta!(HISOL, :DocTestSetup, :(using HISOL); recursive=true)
+DocMeta.setdocmeta!(HiSol, :DocTestSetup, :(using HiSol); recursive=true)
 
 makedocs(;
-    modules=[HISOL],
+    modules=[HiSol],
     authors="Christian Brahms <c.brahms@hw.ac.uk>",
-    repo="https://github.com/LupoLab/HISOL.jl/blob/{commit}{path}#{line}",
-    sitename="HISOL.jl",
+    repo="https://github.com/LupoLab/HiSol.jl/blob/{commit}{path}#{line}",
+    sitename="HiSol.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://LupoLab.github.io/HISOL.jl",
+        canonical="https://LupoLab.github.io/HiSol.jl",
         edit_link="master",
         assets=String[],
     ),
@@ -20,6 +20,6 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/LupoLab/HISOL.jl",
+    repo="github.com/LupoLab/HiSol.jl",
     devbranch="master",
 )
