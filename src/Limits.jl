@@ -6,6 +6,11 @@ import HiSol.Solitons: τfwhm_to_T0, T0P0, Δβwg, Δβρ
 import HiSol.HCF: Aeff0, δ, fβ2, get_unm, ZDW
 import HiSol.Data: n2_0, n2_gas
 
+"""
+    critical_power(gas, pressure, λ)
+
+Calculate the critical power for a given `pressure` of `gas` for pulses with central wavelength `λ0`.
+"""
 function critical_power(gas, pressure, λ)
     # Fibich and Gaeta, Optics Letters 25, 335 (2000)
     # Note here we use n_gas ~ 1, which is justified even for high pressure
@@ -21,7 +26,12 @@ function critical_power(gas, pressure, λ)
     return 1.86225 * λ^2/(4π*n2)
 end
 
+"""
+    critical_density(gas, λ, τfwhm, energy)
 
+Calculate the `gas` density at which the peak power of a pulse with FWHM duration `τfwhm` and `energy`
+is equal to the critical power.
+"""
 function critical_density(gas, λ, τfwhm, energy)
     # Note here we use n_gas ~ 1, which is justified even for high pressure
     # (n_gas - 1 < 1e-3 typically)
@@ -32,10 +42,21 @@ function critical_density(gas, λ, τfwhm, energy)
     return 4/3*ε_0*c/γ3*n2
 end
 
+"""
+    critical_pressure(gas, λ, τfwhm, energy)
 
+Calculate the `gas` pressure at which the peak power of a pulse with FWHM duration `τfwhm` and `energy`
+is equal to the critical power.
+"""
 critical_pressure(gas, args...) = pressure(gas, critical_density(gas, args...))
 
+"""
+    critical_intensity(λ_target, gas, λ0; kwargs...)
 
+Calculate the intensity at which the critical power is reached when RDW emission is phase-matched at
+`λ_target` in a given `gas` when pumping at central wavelength `λ0`. Further `kwargs` are `n`, `m` and `kind`
+and determine the mode of the HCF (default HE₁₁).
+"""
 function critical_intensity(λ_target, gas, λ0; kwargs...)
     # Pcrit = Aeff * Icrit = Aeff0 * a² * Icrit
     # Pcrit0/ρ = Aeff0 * a² * Icrit
