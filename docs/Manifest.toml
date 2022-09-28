@@ -27,7 +27,7 @@ git-tree-sha1 = "ee945ed10767de73cf8b610951b98228cb65af80"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 version = "0.27.22"
 
-[[deps.HISOL]]
+[[deps.HiSol]]
 path = ".."
 uuid = "b3f70d9b-428d-48dd-a02b-de2d62b823ae"
 version = "0.1.0"

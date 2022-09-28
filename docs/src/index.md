@@ -1,14 +1,14 @@
 ```@meta
-CurrentModule = HISOL
+CurrentModule = HiSol
 ```
 
-# HISOL
+# HiSol
 
-Documentation for [HISOL](https://github.com/LupoLab/HISOL.jl).
+Documentation for [HiSol](https://github.com/LupoLab/HiSol.jl).
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [HISOL]
+Modules = [HiSol]
 ```
