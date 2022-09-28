@@ -56,8 +56,8 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
-            using HISOL
-            DocMeta.setdocmeta!(HISOL, :DocTestSetup, :(using HISOL); recursive=true)
-            doctest(HISOL)'
+            using HiSol
+            DocMeta.setdocmeta!(HiSol, :DocTestSetup, :(using HiSol); recursive=true)
+            doctest(HiSol)'
         env:
           PYTHON: # remove PYTHON env variable to make sure packages are installed
