@@ -88,6 +88,12 @@ function diverged_beam(a, λ0, distance)
     w0*sqrt(1 + (distance/zr)^2)
 end
 
+function beamsize_distance(a, λ0, w0)
+    w0HCF = 0.64a
+    zr = rayleigh(w0HCF, λ0)
+    zr*sqrt((w0/w0HCF)^2 - 1)
+end
+
 function diverged_ROC(a, λ0, distance)
     w0 = 0.64a
     zr = rayleigh(w0, λ0)
