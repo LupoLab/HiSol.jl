@@ -93,14 +93,16 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     loss_ratio = Lloss ./ (S_fiss .* Lfiss)
     fiss_ratio = flength ./ (S_fiss .* Lfiss)
 
-    Nmin_ratio = getindex.(p, :N)./getindex.(p, :Nmin)
-    Nmax_ratio = getindex.(p, :Nmax)./getindex.(p, :N)
+    N = getindex.(p, :N)
+    Nmax = getindex.(p, :Nmax)
+    Nmin_ratio = N./getindex.(p, :Nmin)
+    Nmax_ratio = Nmax./N
 
     loss_idcs = (loss_ratio .> 1)
     fiss_idcs = (fiss_ratio .> 1)
     min_idcs = (Nmin_ratio .> 1)
     max_idcs = (Nmax_ratio .> 1)
-    goodidcs = @. loss_idcs & fiss_idcs & min_idcs & max_idcs
+    goodidcs = @. loss_idcs && fiss_idcs && min_idcs && max_idcs
 
     fig = plt.figure()
     fig.set_size_inches(12, 3.5)
@@ -138,6 +140,23 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.title("Maximum soliton order")
 
     fig.tight_layout()
+
+    Lfiss_ok = Lfiss[goodidcs]
+
+    fig2 = plt.figure()
+    fig2.set_size_inches(6, 3.5)
+    plt.subplot(1, 2, 1)
+    plt.pcolormesh(1e6a, 1e6energy, Lfiss)
+    plt.clim(0, 1.5*maximum(Lfiss_ok))
+    plt.contour(1e6a, 1e6energy, loss_idcs, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, fiss_idcs, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, goodidcs, 0; colors="k")
+    plt.subplot(1, 2, 2)
+    plt.pcolormesh(1e6a, 1e6energy, N)
+    plt.clim(1, 1.5maximum(Nmax))
+    plt.contour(1e6a, 1e6energy, max_idcs, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, min_idcs, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, goodidcs, 0; colors="k")
 
     fig, f
 
