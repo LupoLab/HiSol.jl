@@ -82,6 +82,27 @@ end
 Calculate the 1/e² beam radius for a beam at wavelength `λ0` at `distance`
 away from an HCF with core radius `a`.
 """
-diverged_beam(a, λ0, distance) = distance*λ0/(π*0.64a)
+function diverged_beam(a, λ0, distance)
+    w0 = 0.64a
+    zr = rayleigh(w0, λ0)
+    w0*sqrt(1 + (distance/zr)^2)
+end
+
+function diverged_ROC(a, λ0, distance)
+    w0 = 0.64a
+    zr = rayleigh(w0, λ0)
+    distance*(1 + (zr/distance)^2)
+end
+
+function kerr_lens(w0, energy, τfwhm, thickness; material=:SiO2)
+    n2 = n2_solid(material)
+    _, P0 = T0P0(τfwhm, energy)
+    π*w0^4/(8*n2*thickness*P0)
+end
+
+function kerr_lens(w0, peakpower, thickness; material=:SiO2)
+    n2 = n2_solid(material)
+    π*w0^4/(8*n2*thickness*peakpower)
+end
 
 end
