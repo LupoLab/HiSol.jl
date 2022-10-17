@@ -9,7 +9,7 @@ import HiSol.Focusing: max_flength
 import HiSol.Data: n2_0, n2_solid
 
 function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
-                        thickness=1e-3, material=:SiO2, zr_frac=0.2,
+                        thickness=1e-3, material=:SiO2, Bmax=0.2,
                         LIDT=2000, S_fluence=5,
                         entrance_window=true, exit_window=true,
                         S_ion=10, S_sf=5,
@@ -40,7 +40,7 @@ function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
             T0, P0 = T0P0(τfwhm, energy)
             intensity = P0/aeff
             flength = max_flength(a, λ0, energy, τfwhm, maxlength;
-                            thickness, material, zr_frac, LIDT, S_fluence,
+                            thickness, material, Bmax, LIDT, S_fluence,
                             entrance_window, exit_window)
             Ld = dispersion_length(T0, β2)
             Lnl = nonlinear_length(P0, γ)
@@ -60,20 +60,20 @@ function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
 end
 
 function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
-                        thickness=1e-3, material=:SiO2, zr_frac=0.2,
+                        thickness=1e-3, material=:SiO2, Bmax=0.2,
                         entrance_window=true, exit_window=true,
                         LIDT=2000, S_fluence=5,
                         S_sf=5, S_ion=10, S_fiss=1.5, kwargs...)
 
     _, f = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
-                        thickness, material, zr_frac,
+                        thickness, material, Bmax,
                         entrance_window, exit_window,
                         LIDT, S_fluence,
                         S_ion, S_sf, kwargs...)
     
     emin, amin = min_energy(λ_target, λ0, gas, τfwhm; S_sf, S_ion, S_loss=1, kwargs...)
     emax, amax = max_energy(λ_target, λ0, gas, τfwhm, maxlength;
-                   S_sf, S_ion, S_fiss, thickness, material, zr_frac,
+                   S_sf, S_ion, S_fiss, thickness, material, Bmax,
                    entrance_window, exit_window, LIDT, S_fluence, kwargs...)
 
     a = range(0.9amin, 1.5amax, 512)
@@ -164,14 +164,14 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
 end
 
 function aplot_energy_maxlength(λ_target, gas, λ0, τfwhm, energy, maxlength;
-                                thickness=1e-3, material=:SiO2, zr_frac=0.2,
+                                thickness=1e-3, material=:SiO2, Bmax=0.2,
                                 entrance_window=true, exit_window=true,
                                 LIDT=2000, S_fluence=5,
                                 amin=10e-6, amax=350e-6, Na=128,
                                 S_sf=5, S_ion=10, S_fiss=1.5, kwargs...)
     a = range(amin, amax, Na)
     f, _ = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
-                        thickness, material, zr_frac,
+                        thickness, material, Bmax,
                         entrance_window, exit_window,
                         LIDT, S_fluence,
                         S_ion, S_sf, kwargs...)
@@ -265,7 +265,7 @@ emission system for RDW wavelength `λ_target` driven by pulses at `λ0` with du
 - `S_sf` (default 5): Maximum fraction of the critical power in the pump pulse
 - `S_ion` (default 10): Maximum fraction of barrier-suppression intensity in the pump pulse
 - `S_fiss` (default 1.5): Mininum HCF length is `S_fiss` times the fission length
-- `zr_frac` (default 0.2): Maximum Kerr-lens-induced focal shift as a fraction
+- `Bmax` (default 0.2): Maximum Kerr-lens-induced focal shift as a fraction
                            of the Rayleigh length.
 - `S_fluence` (default 5): Maximum fraction of LIDT allowed on the end mirrors
 
@@ -273,7 +273,7 @@ Further `kwargs` `m`, `n` and `kind` determine the HCF mode.
 """
 function max_energy(λ_target, λ0, gas, τfwhm, maxlength;
                     S_sf=5, S_ion=10, S_fiss=1.5,
-                    thickness=1e-3, material=:SiO2, zr_frac=0.2,
+                    thickness=1e-3, material=:SiO2, Bmax=0.2,
                     LIDT=2000, S_fluence=5,
                     entrance_window=true, exit_window=true, kwargs...)
     λzd = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
@@ -288,8 +288,8 @@ function max_energy(λ_target, λ0, gas, τfwhm, maxlength;
 
     # Solving S_fiss * L_fiss = L_tot - d_dwin/mir
     den1 = S_fiss*T0^2/(N*abs(δ_))
-    den_win = sqrt(8*aeff0*n2w*thickness*π^3*0.64^2*f*abs(δ_)*N^2/
-                (zr_frac*λ0^2*n20*u_nm^2*T0^2))
+    den_win = sqrt(4*aeff0*n2w*thickness*π^3*0.64^2*f*abs(δ_)*N^2/
+                (Bmax*λ0^2*n20*u_nm^2*T0^2))
     den_mir = sqrt(4*aeff0*N^2*π^2*0.64^2*f*abs(δ_)/
                     (T0*λ0*LIDT/S_fluence*u_nm^2*n20))
     if entrance_window

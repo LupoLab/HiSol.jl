@@ -11,7 +11,7 @@ import Roots: find_zero
 import PyPlot: plt
 
 function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                  thickness=1e-3, material=:SiO2, zr_frac=0.2,
+                  thickness=1e-3, material=:SiO2, Bmax=0.2,
                   LIDT=2000, S_fluence=5, S_sf=1.5, S_ion=10,
                   entrance_window=true, exit_window=true)
     factor = τfwhm_in/τfwhm_out
@@ -45,7 +45,7 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     # This is a reliable way of finding out whether there is a solution
     while ~enough
         global flength = max_flength(aguess, λ0, energy, τfwhm_in, maxlength;
-                                     thickness, material, zr_frac, LIDT, S_fluence,
+                                     thickness, material, Bmax, LIDT, S_fluence,
                                      entrance_window, exit_window)
         if flength <= 0
             @debug(@sprintf("a = %.1f μm: required window distance is too large",1e6aguess))
@@ -75,7 +75,7 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     @debug("Initial fibre length", flength)
     aopt = find_zero(aguess) do a
         global flength = max_flength(a, λ0, energy, τfwhm_in, maxlength;
-                                     thickness, material, zr_frac, LIDT, S_fluence,
+                                     thickness, material, Bmax, LIDT, S_fluence,
                                      entrance_window, exit_window)
         γLeff_this = n2*k0/(A0*a^2)*Leff(flength, a, λ0)
         γLeff_this - γLeff
@@ -88,7 +88,7 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 end
 
 function params_maxlength(τfwhm_in, gas, λ0, energy, maxlength;
-                          thickness=1e-3, material=:SiO2, zr_frac=0.2, S_sf=1.5,
+                          thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5,
                           entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5)
 
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy)
@@ -103,7 +103,7 @@ function params_maxlength(τfwhm_in, gas, λ0, energy, maxlength;
 
     function params(a)
         flength = max_flength(a, λ0, energy, τfwhm_in, maxlength;
-                              thickness, material, zr_frac, LIDT, S_fluence,
+                              thickness, material, Bmax, LIDT, S_fluence,
                               entrance_window, exit_window)
         γLeff = n2*k0/(A0*a^2)*Leff(flength, a, λ0)
         t = transmission.(flength, a, λ0)
@@ -118,13 +118,13 @@ function params_maxlength(τfwhm_in, gas, λ0, energy, maxlength;
 end
 
 function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                       thickness=1e-3, material=:SiO2, zr_frac=0.2, S_sf=1.5, S_ion=10,
+                       thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5, S_ion=10,
                        entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5,
                        amin=10e-6, amax=500e-6, Na=512)
     factor = τfwhm_in/τfwhm_out
 
     f = params_maxlength(τfwhm_in, gas, λ0, energy, maxlength;
-                         thickness, material, zr_frac, S_sf,
+                         thickness, material, Bmax, S_sf,
                          entrance_window, exit_window, LIDT, S_fluence)
 
 
@@ -144,7 +144,7 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 
     try
         global aopt, flopt, _, topt = optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                        thickness, material, zr_frac, S_sf, S_ion, LIDT, S_fluence, entrance_window, exit_window)
+                        thickness, material, Bmax, S_sf, S_ion, LIDT, S_fluence, entrance_window, exit_window)
         global intopt = P0/(A0*aopt^2)
     catch e
         global aopt = missing

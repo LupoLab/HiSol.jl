@@ -3,21 +3,23 @@ import HiSol.Data: n2_solid
 import HiSol.Solitons: T0P0
 
 """
-    window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, zr_frac=0.2)
+    window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, Bmax=0.2)
 
 Calculate the minimum distance between the exit of an HCF with radius `a` and a window made of `material`
-with a given `thickness` such that the Kerr lens for a pulse at wavelength `λ0` with `energy` and duration `τfwhm`
-does not cause a shift in the focal length by more than `zr_frac` times the Rayleigh length.
-
-Note: A shift of `zr_frac` = 0.2 causes a drop in coupling efficiency of approximately 1%.
+with a given `thickness` such that the B-integral for a pulse at wavelength `λ0` with `energy` and duration `τfwhm`
+does not exceed `Bmax`.
 """
-function window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, zr_frac=0.2)
-    n2 = n2_solid(material)
+function window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, Bmax=0.2)
     _, P0 = T0P0(τfwhm, energy)
-    w0 = 0.64a
-    zr = rayleigh(w0, λ0)
-
-    sqrt(8*n2*thickness*P0/zr_frac/π/w0^4*zr^3) # approximate
+    n2 = n2_solid(material)
+    k0 = 2π/λ0
+    # Bint = n2 * k0 * I0 * thickness
+    Imax = Bmax/(n2*k0*thickness)
+    # I0 = 2*P0/(π*proc.w0^2)
+    w0min = sqrt(2P0/(π*Imax))
+    w0HCF = 0.64a
+    w0HCF >= w0min && return 0.0
+    beamsize_distance(w0HCF, λ0, w0min)
 end
 
 rayleigh(w0, λ) = π*w0^2/λ
@@ -58,15 +60,15 @@ The keywords `entrance_window` and `exit_window` set whether a window is present
 The remaining keyword arguments
 are passed to:
 
-- [`window_distance`](@ref): `thickness`, `material`, `zr_frac`
+- [`window_distance`](@ref): `thickness`, `material`, `Bmax`
 - [`mirror_distance`](@ref): `LIDT`, `S_fluence`
 """
 function max_flength(a, λ0, energy, τfwhm, maxlength;
-                     thickness=1e-3, material=:SiO2, zr_frac=0.2,
+                     thickness=1e-3, material=:SiO2, Bmax=0.2,
                      LIDT=2000, S_fluence=5,
                      entrance_window=true, exit_window=true)
 
-    dwin = window_distance(a, λ0, energy, τfwhm, thickness; material, zr_frac)
+    dwin = window_distance(a, λ0, energy, τfwhm, thickness; material, Bmax)
     dmir = mirror_distance(a, λ0, energy, LIDT; S_fluence)
 
     # TODO: if both window and mirror are present, mirror is always
@@ -88,10 +90,9 @@ function diverged_beam(a, λ0, distance)
     w0*sqrt(1 + (distance/zr)^2)
 end
 
-function beamsize_distance(a, λ0, w0)
-    w0HCF = 0.64a
-    zr = rayleigh(w0HCF, λ0)
-    zr*sqrt((w0/w0HCF)^2 - 1)
+function beamsize_distance(w0, λ0, w0_diverged)
+    zr = rayleigh(w0, λ0)
+    zr*sqrt((w0_diverged/w0)^2 - 1)
 end
 
 function diverged_ROC(a, λ0, distance)
