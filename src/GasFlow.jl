@@ -1,6 +1,7 @@
 module GasFlow
 import HiSol.Data: mean_speed, gas_viscosity
 import Roots: find_zero
+import Luna.PhysData: atm, bar
 
 """
     pumps
@@ -40,4 +41,25 @@ function gradient_end_pressure(a, flength, gas, Pmax, pump_speed)
 end
 
 Pascal_to_mbar(P_Pascal) = P_Pascal/100
+slpm(qpv) = qpv/atm * 1000 * 60
+mbarlps(qpv) = qpv / bar * 1000 * 1000
+
+function choked_pressure(a, flength, gas, Pmax)
+    ID = 2a
+    η = gas_viscosity(gas)
+    c = 1007 #speed of sound--TODO
+    ID^2*Pmax^2/(64η*flength*c)
+end
+
+function tube_PVflow_choked(a, flength, gas, Pmax)
+    c = 1007 # TODO
+    pd = choked_pressure(a, flength, gas, Pmax)
+    pd * π*a^2 * c
+end
+
+function gradient_end_pressure_choked(a, flength, gas, Pmax, pump_speed)
+    qpv = tube_PVflow_choked(a, flength, gas, Pmax)
+    qpv/pump_speed # assumes constant pump speed. not true!
+end
+
 end
