@@ -151,12 +151,19 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.contour(1e6a, 1e6energy, loss_idcs, 0; colors="0.4")
     plt.contour(1e6a, 1e6energy, fiss_idcs, 0; colors="0.4")
     plt.contour(1e6a, 1e6energy, goodidcs, 0; colors="k")
+    plt.xlabel("Core radius (μm)")
+    plt.ylabel("Energy (μJ)")
+    # plt.colorbar()
+    # plt.colorbar(label="Fission length (m)")
     plt.subplot(1, 2, 2)
     plt.pcolormesh(1e6a, 1e6energy, N)
     plt.clim(1, 1.5maximum(Nmax))
     plt.contour(1e6a, 1e6energy, max_idcs, 0; colors="0.4")
     plt.contour(1e6a, 1e6energy, min_idcs, 0; colors="0.4")
     plt.contour(1e6a, 1e6energy, goodidcs, 0; colors="k")
+    plt.xlabel("Core radius (μm)")
+    plt.ylabel("Energy (μJ)")
+    # plt.colorbar(label="Soliton order")
 
     fig, f
 
