@@ -10,14 +10,14 @@ export α, β, dB_per_m, loss_length, transmission, Leff, dispersion, Aeff, Aeff
 get_unm(;n=1, m=1, kind=:HE) = get_unm(n, m, kind)
 
 function α(a::Number, λ::Number; kwargs...)
-    u_nm = get_unm(kwargs...)
+    u_nm = get_unm(;kwargs...)
     ω = wlfreq(λ)
     ν = real(ref_index(:SiO2, λ)) # ν = n_glass/n_gas with n_gas ≈ 1
     2*c^2*u_nm^2/(a^3*ω^2) * (ν^2 + 1)/(2*sqrt(ν^2-1))
 end
 
 function αbar_a(λ::Number; kwargs...)
-    u_nm = get_unm(kwargs...)
+    u_nm = get_unm(;kwargs...)
     ω = wlfreq(λ)
     ν = real(ref_index(:SiO2, λ)) # ν = n_glass/n_gas with n_gas ≈ 1
     2*c^2*u_nm^2/ω^2 * (ν^2 + 1)/(2*sqrt(ν^2-1))
@@ -35,14 +35,14 @@ function Leff(length, a...; kw...)
 end
 
 function βfunω(a, gas, pressure; kwargs...)
-    u_nm = get_unm(kwargs...)
+    u_nm = get_unm(;kwargs...)
     γ1fun = Data.γ1(gas)
     ρ = density(gas, pressure)
     ω -> ω/c * (1 + ρ*γ1fun(wlfreq(ω))/2 - u_nm^2*c^2/(2a^2*ω^2))
 end
 
 function β(a, gas, pressure, λ::Number; kwargs...)
-    u_nm = get_unm(kwargs...)
+    u_nm = get_unm(;kwargs...)
     ω = wlfreq(λ)
     γ1 = real(sellmeier_gas(gas)(1e6λ))
     ρ = density(gas, pressure)
