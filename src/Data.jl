@@ -63,8 +63,6 @@ function gas_viscosity(gas)
         return 1.4257*gas_viscosity(N2)
     elseif gas == :Xe
         return 1.2964*gas_viscosity(N2)
-    elseif gas == :H
-        return 8.8e-6
     elseif gas == :N2
         return 17.5e-6
     else
@@ -74,7 +72,7 @@ end
 
 function gas_mass(gas)
     if gas == :He
-        m = 2
+        m = 4
     elseif gas == :Ne
         m = 20.1797
     elseif gas == :Ar
@@ -83,8 +81,10 @@ function gas_mass(gas)
         m = 83.798
     elseif gas == :Xe
         m = 131.293
-    elseif gas == :H
-        m = 1
+    elseif gas == :H2
+        m = 2
+    elseif gas == :N2
+        m = 14.0067
     else
         error("Unknown gas $gas")
     end
@@ -94,4 +94,29 @@ end
 
 mean_speed(gas, T=roomtemp) = sqrt(8*k_B*T/(π*gas_mass(gas)))
 
+function adiabatic_ratio(gas)
+    if gas == :He
+        return 1.66
+    elseif gas == :Ne
+        return 1.64
+    elseif gas == :Ar
+        return 1.67
+    elseif gas == :Kr
+        return 1.68
+    elseif gas == :Xe
+        return 1.66
+    elseif gas == :H2
+        return 1.41
+    elseif gas == :N2
+        return 1.47
+    else
+        error("Unknown gas $gas")
+    end
+end
+
+function speed_of_sound(gas, T=roomtemp)
+    γ = adiabatic_ratio(gas)
+    m = gas_mass(gas)
+    sqrt(γ*k_B*T/m)
+end
 end
