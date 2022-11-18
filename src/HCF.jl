@@ -1,5 +1,5 @@
 module HCF
-import Luna.PhysData: ref_index, c, ε_0, wlfreq, sellmeier_gas, density
+import Luna.PhysData: ref_index, c, ε_0, wlfreq, sellmeier_gas, density, pressure
 import Luna.Capillary: get_unm, Aeff_Jintg
 import Luna.Maths: derivative
 import Roots: find_zero
