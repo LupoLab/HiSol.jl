@@ -4,14 +4,14 @@ import HiSol
 
 function max_energy_brute_window(λ_target, λ0, gas, τfwhm, maxlength;
                                  S_sf=5, S_ion=10, S_fiss=1.5,
-                                 thickness=1e-3, material=:SiO2, zr_frac=0.2,
+                                 thickness=1e-3, material=:SiO2, Bmax=0.2,
                                  kwargs...)
     λzd = HiSol.Solitons.RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
     N = HiSol.Limits.Nmax(λzd, gas, λ0, τfwhm; S_sf, S_ion, kwargs...)
 
     amax = find_zero((10e-6, 2e-3)) do a
         energy = HiSol.Solitons.N_to_energy(N, a, gas, λ0, λzd, τfwhm; kwargs...)
-        dwin = HiSol.Focusing.window_distance(a, λ0, energy, τfwhm, thickness; material, zr_frac)
+        dwin = HiSol.Focusing.window_distance(a, λ0, energy, τfwhm, thickness; material, Bmax)
         pressure = HiSol.Solitons.RDW_pressure(λ_target, a, gas, λ0; kwargs...)
         Lf = HiSol.Solitons.fission_length(a, gas, pressure, λ0, τfwhm, energy)
         LHCF = S_fiss*Lf
@@ -44,9 +44,9 @@ end
         gas = :HeJ
         τfwhm = 10e-15
 
-        @testset "zr_frac = $zr_frac" for zr_frac in 0.1:0.1:1
-            emax, amax = HiSol.Design.max_energy(λ_target, λ0, gas, τfwhm, maxlength; zr_frac)
-            amax2 = max_energy_brute_window(λ_target, λ0, gas, τfwhm, maxlength; zr_frac)
+        @testset "Bmax = $Bmax" for Bmax in 0.1:0.1:1
+            emax, amax = HiSol.Design.max_energy(λ_target, λ0, gas, τfwhm, maxlength; Bmax)
+            amax2 = max_energy_brute_window(λ_target, λ0, gas, τfwhm, maxlength; Bmax)
             @test isapprox(amax, amax2; rtol=1e-3)
         end
         @testset "LIDT = $LIDT" for LIDT in 1000:500:3000
