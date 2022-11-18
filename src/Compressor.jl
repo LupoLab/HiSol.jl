@@ -1,7 +1,7 @@
 module Compressor
 import HiSol.Limits: critical_density, barrier_suppression_intensity
 import HiSol.Solitons: T0P0
-import HiSol.HCF: Aeff0, Leff, transmission, intensity_modeavg
+import HiSol.HCF: Aeff0, Leff, transmission, intensity_modeavg, α
 import HiSol.Focusing: max_flength, diverged_beam
 import HiSol.Data: n2_gas
 import Luna.PhysData: pressure
@@ -87,7 +87,7 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     return aopt, flength, pr, t
 end
 
-function params_maxlength(τfwhm_in, gas, λ0, energy, maxlength;
+function params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                           thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5,
                           entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5)
 
@@ -98,14 +98,27 @@ function params_maxlength(τfwhm_in, gas, λ0, energy, maxlength;
 
     _, P0 = T0P0(τfwhm_in, energy)
 
+    broadfac_req = τfwhm_in/τfwhm_out
+    φnl_req = nonlinear_phase(broadfac_req)
+
     k0 = 2π/λ0
     A0 = Aeff0()
 
     function params(a)
-        flength = max_flength(a, λ0, energy, τfwhm_in, maxlength;
+        maxflength = max_flength(a, λ0, energy, τfwhm_in, maxlength;
                               thickness, material, Bmax, LIDT, S_fluence,
                               entrance_window, exit_window)
-        γLeff = n2*k0/(A0*a^2)*Leff(flength, a, λ0)
+        γthis = n2*k0/(A0*a^2)
+        Leff_req = φnl_req/P0/γthis
+        maxLeff = Leff(maxflength, a, λ0)
+        if maxLeff > Leff_req
+            α_ = α(a, λ0)
+            flength = -1/α_*log(1-α_*Leff_req)
+        else
+            flength = maxflength
+        end
+
+        γLeff = γthis * Leff(flength, a, λ0)
         t = transmission.(flength, a, λ0)
         intensity = P0/(A0*a^2)
         φnl = P0*γLeff
@@ -120,10 +133,10 @@ end
 function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                        thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5, S_ion=10,
                        entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5,
-                       amin=10e-6, amax=500e-6, Na=512)
+                       amin=25e-6, amax=500e-6, Na=512)
     factor = τfwhm_in/τfwhm_out
 
-    f = params_maxlength(τfwhm_in, gas, λ0, energy, maxlength;
+    f = params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                          thickness, material, Bmax, S_sf,
                          entrance_window, exit_window, LIDT, S_fluence)
 
