@@ -1,6 +1,9 @@
 module Focusing
 import HiSol.Data: n2_solid
 import HiSol.Solitons: T0P0
+import Luna.Maths: gauss, fwhm
+import Luna: FFTW, Grid, Fields
+import Luna.Modes: hquadrature
 
 """
     window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, Bmax=0.2)
@@ -110,6 +113,27 @@ end
 function kerr_lens(w0, peakpower, thickness; material=:SiO2)
     n2 = n2_solid(material)
     π*w0^4/(8*n2*thickness*peakpower)
+end
+
+function get_Bint(λ0, τfwhm, peakpower, w0, thickness;
+                  material=:SiO2, prop=true)
+    n2 = n2_solid(material)
+    k0 = 2π/λ0
+    if prop
+        grid = Grid.EnvGrid(thickness, λ0, (200e-9, 4e-6), 2000e-15)
+        Et = sqrt.(gauss.(grid.t, fwhm=τfwhm))
+        Eω = FFTW.fft(Et)
+        Fields.prop_material!(Eω, grid, material, -thickness, λ0)
+        P0int, _ = hquadrature(0, thickness) do ti
+            Eωprop = Fields.prop_material(Eω, grid, material, ti, λ0)
+            Etprop = FFTW.ifft(Eωprop)
+            maximum(abs2.(Etprop))/maximum(abs2.(Et)) * peakpower
+        end
+    else
+        P0int = peakpower * thickness
+    end
+    I0int = 2*P0int/(π*w0^2)
+    n2 * k0 * I0int
 end
 
 end
