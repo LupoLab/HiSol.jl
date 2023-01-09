@@ -1,7 +1,9 @@
 module HCF
 import Luna.PhysData: ref_index, c, ε_0, wlfreq, sellmeier_gas, density, pressure
-import Luna.Capillary: get_unm, Aeff_Jintg
+import Luna.Capillary: get_unm, Aeff_Jintg, MarcatiliMode
 import Luna.Maths: derivative
+import Luna.Fields: normalised_gauss_beam
+import Luna.Modes: overlap
 import Roots: find_zero
 import HiSol: Data
 
@@ -28,6 +30,20 @@ dB_per_m(args...; kw...) = 10/np.log(10)*α(args...; kw...)
 loss_length(args...; kw...) = 1/α(args...; kw...)
 
 transmission(length, a...; kw...) = exp(-α(a...; kw...)*length) 
+
+function transmission(length, a, λ, Nmodes=6, afrac=0.64)
+    k = 2π/λ
+    w0 = afrac*a
+    Erθ = normalised_gauss_beam(k, w0)
+    t = 0.0
+    for m in 1:Nmodes
+        mode = MarcatiliMode(a; m)
+        η = abs2.(overlap(mode, Erθ))
+        α_ = α(a, λ; m)
+        t += η * exp(-α_*length)
+    end
+    t
+end
 
 function Leff(length, a...; kw...)
     α_ = α(a...; kw...)
