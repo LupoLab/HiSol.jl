@@ -5,6 +5,7 @@ import HiSol.HCF: Aeff0, Leff, transmission, intensity_modeavg, α
 import HiSol.Focusing: max_flength, diverged_beam
 import HiSol.Data: n2_gas
 import Luna.PhysData: pressure
+import Luna.Tools: τfw_to_τ0
 import Logging: @debug, @info
 import Printf: @sprintf
 import Roots: find_zero
@@ -222,5 +223,11 @@ end
 
 nonlinear_phase(broadfac) = sqrt(3*sqrt(3)/4 * (broadfac^2 - 1))
 broadening_factor(φnl) = sqrt(1 + 4/3√3*φnl^2)
+
+function gauss_chirp(τfwhm1, τfwhm2)
+    τ0 = τfw_to_τ0(max(τfwhm1, τfwhm2), :gauss)
+    τ0FTL = τfw_to_τ0(min(τfwhm1, τfwhm2), :gauss)
+    τ0FTL*sqrt(τ0^2 - τ0FTL^2)
+end
 
 end
