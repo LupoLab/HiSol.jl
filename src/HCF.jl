@@ -57,13 +57,7 @@ function βfunω(a, gas, pressure; kwargs...)
     ω -> ω/c * (1 + ρ*γ1fun(wlfreq(ω))/2 - u_nm^2*c^2/(2a^2*ω^2))
 end
 
-function β(a, gas, pressure, λ::Number; kwargs...)
-    u_nm = get_unm(;kwargs...)
-    ω = wlfreq(λ)
-    γ1 = real(sellmeier_gas(gas)(1e6λ))
-    ρ = density(gas, pressure)
-    ω/c * (1 + ρ*γ1/2 - u_nm^2*c^2/(2a^2*ω^2))
-end
+β(a, gas, pressure, λ::Number; kwargs...) = βfunω(a, gas, pressure; kwargs...)(wlfreq(λ))
 
 function β_ret(a, gas, pressure, λ, λ0; kwargs...)
     ω = wlfreq(λ)

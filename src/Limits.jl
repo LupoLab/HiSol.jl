@@ -97,7 +97,7 @@ function Nmax_sf(λzd, gas, λ0, τfwhm; S_sf=5, kwargs...)
     # eq. (S15) in Supplementary, Travers et al., Nat. Phot. 13, 547 (2019)
     # But with factor in Pcrit of 1.86225 instead of 3
     T0 = τfwhm_to_T0(τfwhm)
-    sqrt(1.86225T0^2*λ0/(3*S_sf*abs(δ(gas, λ0, λzd))))
+    sqrt(1.86225T0^2*λ0/(3*S_sf*abs(δ(gas, λ0, λzd; kwargs...))))
 end
 
 function Nmax_sf(a, gas, pressure, λ0, τfwhm; S_sf=5, kwargs...)

@@ -54,6 +54,10 @@ function gradient_end_pressure(a, flength, gas, Pmax, pump_speed)
     end
 end
 
+function gradient_end_pressure(a, flength, gas, Pmax, pump_speed::Number)
+    gradient_end_pressure(a, flength, gas, Pmax, p -> pump_speed)
+end
+
 Pascal_to_mbar(P_Pascal) = P_Pascal/100
 slpm(qpv) = qpv/atm * 1000 * 60
 mbarlps(qpv) = qpv / bar * 1000 * 1000
