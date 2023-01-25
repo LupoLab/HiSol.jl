@@ -7,19 +7,24 @@ import Luna.Modes: hquadrature
 
 """
     window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, Bmax=0.2)
+    window_distance(a, λ0, peakpower, thickness; material=:SiO2, Bmax=0.2)
 
 Calculate the minimum distance between the exit of an HCF with radius `a` and a window made of `material`
 with a given `thickness` such that the B-integral for a pulse at wavelength `λ0` with `energy` and duration `τfwhm`
-does not exceed `Bmax`.
+(or a given `peakpower`) does not exceed `Bmax`.
 """
 function window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, Bmax=0.2)
     _, P0 = T0P0(τfwhm, energy)
+    window_distance(a, λ0, P0, thickness; material, Bmax)
+end
+
+function window_distance(a, λ0, peakpower, thickness; material=:SiO2, Bmax=0.2)
     n2 = n2_solid(material)
     k0 = 2π/λ0
     # Bint = n2 * k0 * I0 * thickness
     Imax = Bmax/(n2*k0*thickness)
     # I0 = 2*P0/(π*proc.w0^2)
-    w0min = sqrt(2P0/(π*Imax))
+    w0min = sqrt(2peakpower/(π*Imax))
     w0HCF = 0.64a
     w0HCF >= w0min && return 0.0
     beamsize_distance(w0HCF, λ0, w0min)
