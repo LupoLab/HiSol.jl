@@ -47,4 +47,15 @@ end
         @test isapprox(λzd, λzdp; rtol=1e-6)
     end
 
+    @testset "RDW ($gas, $(1e9λ_target) nm) <-> ZDW" for gas in [:HeJ, :Ar], λ_target in collect(range(100e-9, 400e-9, 6))
+        a = 125e-6
+        λ0 = 800e-9
+    
+        λzd = HiSol.Solitons.RDW_to_ZDW.(λ0, λ_target, gas)
+        pressure = HiSol.HCF.ZDW_pressure(λzd, a, gas)
+        @test isapprox(HiSol.HCF.ZDW(a, gas, pressure), λzd, rtol=1e-3)
+        @test isapprox(HiSol.Solitons.RDW_wavelength(a, gas, pressure, λ0), λ_target; rtol=1e-3)
+        @test isapprox(HiSol.Solitons.RDW_pressure(λ_target, a, gas, λ0), pressure; rtol=1e-3)
+    end
+
 end
