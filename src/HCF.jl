@@ -11,13 +11,20 @@ export α, β, dB_per_m, loss_length, transmission, Leff, dispersion, Aeff, Aeff
 
 get_unm(;n=1, m=1, kind=:HE) = get_unm(n, m, kind)
 
-function α(a::Number, λ::Number; kwargs...)
-    u_nm = get_unm(;kwargs...)
-    ω = wlfreq(λ)
-    ν = real(ref_index(:SiO2, λ)) # ν = n_glass/n_gas with n_gas ≈ 1
-    2*c^2*u_nm^2/(a^3*ω^2) * (ν^2 + 1)/(2*sqrt(ν^2-1))
-end
+"""
+    α(a::Number, λ::Number; n=1, m=1, kind=:HE)
 
+Calculate the power loss coefficient for an HCF with core radius `a` at
+wavelength `λ` for the mode defined by `n`, `m`, and `kind`.
+"""
+α(a, args...; kwargs...) = αbar_a(args...; kwargs...)/a^3
+
+"""
+    αbar_a(λ::Number; n=1, m=1, kind=:HE)
+
+Calculate the core-size independent prefactor of the power loss coefficient 
+for the HCF mode defined by `n`, `m`, and `kind`at wavelength `λ`.
+"""
 function αbar_a(λ::Number; kwargs...)
     u_nm = get_unm(;kwargs...)
     ω = wlfreq(λ)
@@ -25,6 +32,13 @@ function αbar_a(λ::Number; kwargs...)
     2*c^2*u_nm^2/ω^2 * (ν^2 + 1)/(2*sqrt(ν^2-1))
 end
 
+"""
+    dB_per_m(a::Number, λ::Number; n=1, m=1, kind=:HE)
+
+Calculate the power loss coefficient in dB/m for an HCF with
+core radius `a` at wavelength `λ` for the mode defined by
+`n`, `m`, and `kind`.
+"""
 dB_per_m(args...; kw...) = 10/np.log(10)*α(args...; kw...)
 
 loss_length(args...; kw...) = 1/α(args...; kw...)
