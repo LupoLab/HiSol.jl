@@ -22,19 +22,21 @@ function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     n20 = n2_0(gas)
     ω0 = PhysData.wlfreq(λ0)
 
+    zdw = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
+    Nma = Nmax(zdw, gas, λ0, τfwhm; S_ion, S_sf)
+
+    δ_ = δ(gas, λ0, zdw; kwargs...)
+
     function params_energy(a)
         density = ρasq/a^2
         pressure = PhysData.pressure(gas, density)
         
         Lloss = loss_length(a, λ0; kwargs...)
         
-        zdw = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
-        Nma = Nmax(zdw, gas, λ0, τfwhm; S_ion, S_sf)
-        
         aeff = A0*a^2
         n2 = n20 * density
         γ = ω0/PhysData.c*n2/aeff
-        β2 = dispersion(a, gas, pressure, λ0, 2; kwargs...)
+        β2 = δ_/a^2
         
         function params(energy)
             T0, P0 = T0P0(τfwhm, energy)
@@ -59,25 +61,30 @@ function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
 
 end
 
-function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
-                        thickness=1e-3, material=:SiO2, Bmax=0.2,
-                        entrance_window=true, exit_window=true,
-                        LIDT=2000, S_fluence=5,
-                        S_sf=5, S_ion=10, S_fiss=1.5, kwargs...)
+function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
+                            thickness=1e-3, material=:SiO2, Bmax=0.2,
+                            entrance_window=true, exit_window=true,
+                            LIDT=2000, S_fluence=5,
+                            S_sf=5, S_ion=10, S_fiss=1.5, Nplot=512, kwargs...)
+                            _, f = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
+                            thickness, material, Bmax,
+                            entrance_window, exit_window,
+                            LIDT, S_fluence,
+                            S_ion, S_sf, kwargs...)
 
-    _, f = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
+    fae, f = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                         thickness, material, Bmax,
                         entrance_window, exit_window,
                         LIDT, S_fluence,
                         S_ion, S_sf, kwargs...)
-    
+        
     emin, amin = min_energy(λ_target, λ0, gas, τfwhm; S_sf, S_ion, S_loss=1, kwargs...)
     emax, amax = max_energy(λ_target, λ0, gas, τfwhm, maxlength;
-                   S_sf, S_ion, S_fiss, thickness, material, Bmax,
-                   entrance_window, exit_window, LIDT, S_fluence, kwargs...)
+                    S_sf, S_ion, S_fiss, thickness, material, Bmax,
+                    entrance_window, exit_window, LIDT, S_fluence, kwargs...)
 
-    a = range(0.9amin, 1.5amax, 512)
-    energy = range(0.9emin, 1.1emax, 512)
+    a = collect(range(0.9amin, 1.5amax, Nplot))
+    energy = collect(range(0.9emin, 1.1emax, Nplot))
 
     p = mapreduce(hcat, a) do ai
         fa = f(ai)
@@ -90,84 +97,91 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     flength = getindex.(p, :flength)
     Lfiss = getindex.(p, :Lfiss)
 
-    loss_ratio = Lloss ./ (S_fiss .* Lfiss)
-    fiss_ratio = flength ./ (S_fiss .* Lfiss)
+    loss_ratio = (S_fiss .* Lfiss) ./ Lloss
+    fiss_ratio = (S_fiss .* Lfiss) ./flength
 
     N = getindex.(p, :N)
     Nmax = getindex.(p, :Nmax)
-    Nmin_ratio = N./getindex.(p, :Nmin)
-    Nmax_ratio = Nmax./N
+    Nmin_ratio = getindex.(p, :Nmin)./N
+    Nmax_ratio = N./Nmax
 
-    loss_idcs = (loss_ratio .> 1)
-    fiss_idcs = (fiss_ratio .> 1)
-    min_idcs = (Nmin_ratio .> 1)
-    max_idcs = (Nmax_ratio .> 1)
+    loss_idcs = (loss_ratio .< 1)
+    fiss_idcs = (fiss_ratio .< 1)
+    min_idcs = (Nmin_ratio .< 1)
+    max_idcs = (Nmax_ratio .< 1)
     goodidcs = @. loss_idcs && fiss_idcs && min_idcs && max_idcs
+
+    ratios = (loss=loss_ratio, fiss=fiss_ratio, Nmin=Nmin_ratio, Nmax=Nmax_ratio)
+    idcs = (loss=loss_idcs, fiss=fiss_idcs, Nmin=min_idcs, Nmax=max_idcs, all=goodidcs)
+    params = (;Lfiss, Lloss, N, Nmax, Nmin)
+
+    a, energy, ratios, params, idcs, fae
+end
+
+function aeplot_maxlength(args...; kwargs...)
+    a, energy, ratios, params, idcs, f = maxlength_limitratios(args...; kwargs...)
 
     fig = plt.figure()
     fig.set_size_inches(12, 3.5)
     plt.subplot(1, 4, 1)
-    plt.pcolormesh(1e6a, 1e6energy, loss_ratio; cmap="seismic")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.loss; cmap="seismic")
     plt.clim(0, 2)
-    plt.contour(1e6a, 1e6energy, loss_idcs, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, goodidcs, 0; colors="k")
+    plt.contour(1e6a, 1e6energy, idcs.loss, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
     plt.ylabel("Energy (μJ)")
     plt.xlabel("Core radius (μm)")
     plt.title("Loss")
     plt.subplot(1, 4, 2)
-    plt.pcolormesh(1e6a, 1e6energy, fiss_ratio; cmap="seismic")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.fiss; cmap="seismic")
     plt.clim(0, 2)
-    plt.contour(1e6a, 1e6energy, fiss_idcs, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, goodidcs, 0; colors="k")
+    plt.contour(1e6a, 1e6energy, idcs.fiss, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
     plt.gca().set_yticklabels([])
     plt.xlabel("Core radius (μm)")
     plt.title("Fission length")
     plt.subplot(1, 4, 3)
-    plt.pcolormesh(1e6a, 1e6energy, Nmin_ratio; cmap="seismic")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmin; cmap="seismic")
     plt.clim(0, 2)
-    plt.contour(1e6a, 1e6energy, min_idcs, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, goodidcs, 0; colors="k")
+    plt.contour(1e6a, 1e6energy, idcs.Nmin, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
     plt.xlabel("Core radius (μm)")
     plt.gca().set_yticklabels([])
     plt.title("Minimum soliton order")
     plt.subplot(1, 4, 4)
-    plt.pcolormesh(1e6a, 1e6energy, Nmax_ratio; cmap="seismic")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmax; cmap="seismic")
     plt.clim(0, 2)
-    plt.contour(1e6a, 1e6energy, max_idcs, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, goodidcs, 0; colors="k")
+    plt.contour(1e6a, 1e6energy, idcs.Nmax, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
     plt.xlabel("Core radius (μm)")
     plt.gca().set_yticklabels([])
     plt.title("Maximum soliton order")
 
     fig.tight_layout()
 
-    Lfiss_ok = Lfiss[goodidcs]
+    Lfiss_ok = params.Lfiss[idcs.all]
 
     fig2 = plt.figure()
     fig2.set_size_inches(6, 3.5)
     plt.subplot(1, 2, 1)
-    plt.pcolormesh(1e6a, 1e6energy, Lfiss)
+    plt.pcolormesh(1e6a, 1e6energy, params.Lfiss)
     plt.clim(0, 1.5*maximum(Lfiss_ok))
-    plt.contour(1e6a, 1e6energy, loss_idcs, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, fiss_idcs, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, goodidcs, 0; colors="k")
+    plt.contour(1e6a, 1e6energy, idcs.loss, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, idcs.fiss, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
     plt.xlabel("Core radius (μm)")
     plt.ylabel("Energy (μJ)")
     # plt.colorbar()
     # plt.colorbar(label="Fission length (m)")
     plt.subplot(1, 2, 2)
-    plt.pcolormesh(1e6a, 1e6energy, N)
-    plt.clim(1, 1.5maximum(Nmax))
-    plt.contour(1e6a, 1e6energy, max_idcs, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, min_idcs, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, goodidcs, 0; colors="k")
+    plt.pcolormesh(1e6a, 1e6energy, params.N)
+    plt.clim(1, 1.5maximum(params.Nmax))
+    plt.contour(1e6a, 1e6energy, idcs.Nmax, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, idcs.Nmin, 0; colors="0.4")
+    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
     plt.xlabel("Core radius (μm)")
-    plt.ylabel("Energy (μJ)")
     # plt.colorbar(label="Soliton order")
 
-    fig, f
-
-    
+    fig, f, a, energy, ratios
 end
 
 function aplot_energy_maxlength(λ_target, gas, λ0, τfwhm, energy, maxlength;
