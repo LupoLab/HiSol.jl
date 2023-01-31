@@ -187,4 +187,12 @@ function N_to_energy(N, a, gas, λ0, λzd, τfwhm; kwargs...)
     2*T0*P0
 end
 
+function N_to_energy(N, a, gas, λ0, τfwhm; ρasq, kwargs...)
+    T0 = τfwhm_to_T0(τfwhm)
+    β2 = HCF.Δ(gas, λ0, ρasq; kwargs...)/a^2
+    γ = HCF.γ(a, gas, λ0; ρasq, kwargs...)
+    P0 = N^2*abs(β2)/(T0^2*γ)
+    2*T0*P0
+end
+
 end

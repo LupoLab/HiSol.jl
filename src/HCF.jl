@@ -95,7 +95,7 @@ end
 
 Aeff0(;n=1, m=1, kind=:HE) = Aeff_Jintg(n, get_unm(n, m, kind), kind)
 
-Aeff(a; kwargs...) = a^2 * Aeff0(kwargs...)
+Aeff(a; kwargs...) = a^2 * Aeff0(;kwargs...)
 
 intensity_modeavg(a, P0; kwargs...) = P0/Aeff(a; kwargs...)
 
@@ -105,11 +105,20 @@ function γ(a, gas, pressure, λ0; kwargs...)
     ω0/c*n2/Aeff(a; kwargs...)
 end
 
-function γ(a, gas, λ0; λzd, kwargs...)
-    n20 = Data.n2_0(gas)
-    u_nm = get_unm(kwargs...)
-    f = fβ2(gas, λzd)
-    2*n20*u_nm^2/(3π*a^4*λ0*f)
+function γ(a, gas, λ0; λzd=nothing, ρasq=nothing, kwargs...)
+    if ~isnothing(λzd)
+        n20 = Data.n2_0(gas)
+        u_nm = get_unm(;kwargs...)
+        f = fβ2(gas, λzd)
+        return n20*u_nm^2/(Aeff0(;kwargs...) * π*a^4*λ0*f)
+    elseif ~isnothing(ρasq)
+        isnothing(λzd) || error("Only one of ρasq or λzd kwargs can be given")
+        n20 = Data.n2_0(gas)
+        aeff0 = Aeff0(;kwargs...)
+        return 2π/λ0 * n20 * ρasq/(aeff0*a^4)
+    else
+        error("One of ρasq or λzd kwargs must be given")
+    end
 end
 
 # eq. S5 of Supplementary, Travers et al., Nat. Phot. 13, 547 (2019)
@@ -118,7 +127,13 @@ fβ2(gas) = Data.dγ1dλ(gas, 2)
 
 function δ(gas, λ, λzd; kwargs...)
     # eq. S7 of Supplementary, Travers et al., Nat. Phot. 13, 547 (2019)
-    get_unm(kwargs...)^2 * λ^3/(8π^3*c^2) * (fβ2(gas, λ)/fβ2(gas, λzd) - 1)
+    get_unm(;kwargs...)^2 * λ^3/(8π^3*c^2) * (fβ2(gas, λ)/fβ2(gas, λzd) - 1)
+end
+
+function Δ(gas, λ, ρasq; kwargs...)
+    u_nm = get_unm(;kwargs...)
+    ω = wlfreq(λ)
+    ρasq/(2c) * (2*Data.dγ1dω(gas, λ, 1) + ω*Data.dγ1dω(gas, λ, 2)) - u_nm^2*c/ω^3
 end
 
 function ZDW(a, gas, pressure; λmin=Data.λmin[gas], λmax=3e-6, kwargs...)
@@ -137,7 +152,7 @@ end
 
 function ZDW_density(λzd, a, gas; kwargs...)
     # eq. S4 of Supplementary, Travers et al., Nat. Phot. 13, 547 (2019)
-    get_unm(kwargs...)^2/(2*π^2*a^2*fβ2(gas, λzd))
+    get_unm(;kwargs...)^2/(2*π^2*a^2*fβ2(gas, λzd))
 end
 
 ZDW_pressure(λzd, a, gas; kwargs...) = pressure(gas, ZDW_density(λzd, a, gas; kwargs...))
