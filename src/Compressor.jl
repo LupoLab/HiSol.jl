@@ -123,7 +123,7 @@ function params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
         t = transmission.(flength, a, λ0)
         intensity = P0/(A0*a^2)
         φnl = P0*γLeff
-        window_distance = (maxlength-flength)/2
+        window_distance = (maxlength-maxflength)/2
         beamsize_w0 = diverged_beam(a, λ0, window_distance)
         (;φnl=P0*γLeff, transmission=t, intensity, flength,
           broadening_factor=broadening_factor(φnl), pressure=pr, n2=n2,
