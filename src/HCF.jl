@@ -41,6 +41,12 @@ core radius `a` at wavelength `λ` for the mode defined by
 """
 dB_per_m(args...; kw...) = 10/np.log(10)*α(args...; kw...)
 
+"""
+    loss_length(a::Number, λ::Number; n=1, m=1, kind=:HE)
+
+Calculate the 1/e power loss length for an HCF with core radius `a` at
+wavelength `λ` for the mode defined by `n`, `m`, and `kind`.
+"""
 loss_length(args...; kw...) = 1/α(args...; kw...)
 
 transmission(length, a...; kw...) = exp(-α(a...; kw...)*length) 

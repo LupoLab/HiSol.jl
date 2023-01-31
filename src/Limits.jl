@@ -104,6 +104,17 @@ function Nmax_sf(a, gas, pressure, λ0, τfwhm; S_sf=5, kwargs...)
     Nmax_sf(ZDW(a, gas, pressure; kwargs...), gas, λ0, τfwhm; S_sf, kwargs...)
 end
 
+"""
+    Nmax(λzd, gas, λ0, τfwhm; S_sf=5, S_ion=10, kwargs...)
+    Nmax(a, gas, pressure, λ0, τfwhm; S_sf=5, S_ion=10, kwargs...)
+
+Find the maximum soliton order in the given `gas`
+for a pulse at central wavelength `λ0` with FWHM duration `τfwhm`,
+assuming a self-focusing safety factor of `S_sf`
+and an ionisation safety factor of `S_ion`. The dispersion can be given either
+as the ZDW `λzd` or by the HCF parameters `a`, and `pressure`.
+The HCF mode can be set by the keyword arguments `n`, `m` and `kind`.
+"""
 function Nmax(args...; S_ion=10, S_sf=5, kwargs...)
     min(
         Nmax_ion(args...; S_ion, kwargs...),
