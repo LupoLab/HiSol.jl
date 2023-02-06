@@ -26,9 +26,12 @@ end
 
     pressure = HiSol.Solitons.RDW_pressure(λ_target, a, gas, λ0)
     λzd = HiSol.HCF.ZDW(a, gas, pressure)
+    ρasq = HiSol.Data.density(gas, pressure)*a^2
 
     N = HiSol.Solitons.N(a, gas, pressure, λ0, τfwhm, energy)
     e2 = HiSol.Solitons.N_to_energy(N, a, gas, λ0, λzd, τfwhm)
+    e3 = HiSol.Solitons.N_to_energy(N, a, gas, λ0, τfwhm; ρasq)
 
     @test isapprox(e2, energy; rtol=1e-2)
+    @test isapprox(e3, energy; rtol=1e-2)
 end
