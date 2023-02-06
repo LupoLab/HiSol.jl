@@ -1,13 +1,15 @@
 module Design
-import PyPlot: plt
+import PyPlot: plt, PyCall
 import Polynomials: Polynomial, roots
 import Luna: PhysData
 import Luna.Plotting: cmap_colours
-import HiSol.Solitons: Δβwg, Δβρ, T0P0, fission_length, N, RDW_to_ZDW, τfwhm_to_T0, N_to_energy, dispersion_length, nonlinear_length
+import HiSol.Solitons: Δβwg, Δβρ, T0P0, fission_length, N, RDW_to_ZDW, τfwhm_to_T0, N_to_energy, dispersion_length, nonlinear_length, density_area_product
 import HiSol.Limits: critical_intensity, barrier_suppression_intensity, Nmin, Nmax
 import HiSol.HCF: intensity_modeavg, loss_length, ZDW, αbar_a, δ, fβ2, get_unm, Aeff0, dispersion, Δ
 import HiSol.Focusing: max_flength
 import HiSol.Data: n2_0, n2_solid
+
+patches = PyCall.pyimport("matplotlib.patches")
 
 function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                         thickness=1e-3, material=:SiO2, Bmax=0.2,
@@ -119,6 +121,76 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
     a, energy, ratios, params, idcs, fae
 end
 
+function boundaries(
+    λ_target, gas, λ0, τfwhm, maxlength;
+    thickness=1e-3, material=:SiO2, Bmax=0.2,
+    entrance_window=true, exit_window=true,
+    LIDT=2000, S_fluence=5,
+    S_sf=5, S_ion=10, S_fiss=1.5, Nplot=1024,
+    kwargs...)
+
+    emin_loss, amin_loss = min_energy(λ_target, λ0, gas, τfwhm; S_sf, S_ion, S_loss=S_fiss, kwargs...)
+    emax_Nmax, amax_Nmax = max_energy(
+        λ_target, λ0, gas, τfwhm, maxlength;
+        thickness, material, Bmax,
+        entrance_window, exit_window,
+        LIDT, S_fluence,
+        S_ion, S_sf, S_fiss, kwargs...)
+
+    energy = collect(range(0.9emin_loss, 1.1emax_Nmax, Nplot))
+
+    amax = maximum_radius.(
+        λ_target, gas, λ0, τfwhm, energy, maxlength;
+        thickness, material, Bmax,
+        entrance_window, exit_window,
+        LIDT, S_fluence,
+        S_fiss, kwargs...)
+
+    a = collect(range(0.9amin_loss, 1.1maximum(amax), Nplot))
+
+    ρasq = density_area_product(λ_target, gas, λ0; kwargs...)
+    λzd = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
+
+    N2e = N_to_energy(gas, λ0, τfwhm; ρasq, kwargs...)
+
+    Nmin_ = Nmin(λ_target, λ0, τfwhm)
+    Nmax_ = Nmax(λzd, gas, λ0, τfwhm; S_sf, S_ion, kwargs...)
+
+    energy_Nmin = N2e.(Nmin_, a)
+    energy_Nmax = N2e.(Nmax_, a)
+
+    ii = (energy_Nmin .< emin_loss) .&& (energy_Nmax .> emin_loss)
+    bottom = hcat(a[ii], emin_loss*ones(count(ii)))
+
+    amax_Nmax = maximum_radius.(
+        λ_target, gas, λ0, τfwhm, energy_Nmax, maxlength;
+        thickness, material, Bmax,
+        entrance_window, exit_window,
+        LIDT, S_fluence,
+        S_fiss, kwargs...)
+    ii = (energy_Nmax .> emin_loss) .&& (a .< amax_Nmax)
+    left = hcat(a[ii], energy_Nmax[ii])
+
+    amax_Nmin = maximum_radius.(
+        λ_target, gas, λ0, τfwhm, energy_Nmin, maxlength;
+        thickness, material, Bmax,
+        entrance_window, exit_window,
+        LIDT, S_fluence,
+        S_fiss, kwargs...)
+    ii = (energy_Nmin .> emin_loss) .&& (a .< amax_Nmin)
+    right = hcat(a[ii], energy_Nmin[ii])
+
+    emin_amax = N2e.(Nmin_, amax)
+    emax_amax = N2e.(Nmax_, amax)
+    ii = (energy .< emax_amax) .&& (energy .> emin_amax)
+    top = hcat(amax[ii], energy[ii])
+
+
+    (full=(loss=emin_loss, Nmax=energy_Nmax, Nmin=energy_Nmin, length=amax),
+     cropped=(loss=bottom, Nmax=left, Nmin=right, length=top),
+     a=a, energy=energy)
+end
+
 function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                         thickness=1e-3, material=:SiO2, Bmax=0.2,
                         entrance_window=true, exit_window=true,
@@ -131,21 +203,14 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
         LIDT, S_fluence,
         S_sf, S_ion, S_fiss, Nplot, kwargs...)
 
-    amax = maximum_radius.(
-        λ_target, gas, λ0, τfwhm, energy, maxlength;
+    bounds = boundaries(
+        λ_target, gas, λ0, τfwhm, maxlength;
         thickness, material, Bmax,
         entrance_window, exit_window,
         LIDT, S_fluence,
-        S_fiss, kwargs...)
-
-    ρasq = 
-
-    emin, amin = min_energy(λ_target, λ0, gas, τfwhm; S_sf, S_ion, S_loss=S_fiss, kwargs...)
-
-    ρasq = Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0; kwargs...)
-
-    emin_Nmin = N_to_energy(params.Nmin, a[1], gas, λ0, τfwhm; ρasq, kwargs...) .* (a./a[1]).^2
-    emax_Nmax = N_to_energy(params.Nmax, a[1], gas, λ0, τfwhm; ρasq, kwargs...) .* (a./a[1]).^2
+        S_sf, S_ion, S_fiss, Nplot,
+        kwargs...)
+    
 
     fig = plt.figure()
     fig.set_size_inches(12, 3.5)
@@ -154,7 +219,11 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.loss, 0; colors="0.4")
     plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
-    plt.axhline(1e6emin; color="0.4")
+    plt.axhline(1e6bounds.full.loss; color="0.4")
+    plt.scatter(bounds.cropped.loss[:, 1]*1e6, bounds.cropped.loss[:, 2]*1e6)
+    plt.scatter(bounds.cropped.Nmin[:, 1]*1e6, bounds.cropped.Nmin[:, 2]*1e6)
+    plt.scatter(bounds.cropped.Nmax[:, 1]*1e6, bounds.cropped.Nmax[:, 2]*1e6)
+    plt.scatter(bounds.cropped.length[:, 1]*1e6, bounds.cropped.length[:, 2]*1e6)
     plt.ylabel("Energy (μJ)")
     plt.xlabel("Core radius (μm)")
     plt.title("Loss")
@@ -163,8 +232,7 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.pcolormesh(1e6a, 1e6energy, ratios.fiss; cmap="Spectral_r")
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.fiss, 0; colors="0.4")
-    plt.plot(amax*1e6, energy*1e6, color="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
+    plt.plot(bounds.full.length*1e6, bounds.energy*1e6, color="0.4")
     plt.gca().set_yticklabels([])
     plt.xlabel("Core radius (μm)")
     plt.title("Fission length")
@@ -173,8 +241,7 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.pcolormesh(1e6a, 1e6energy, ratios.Nmin; cmap="Spectral_r")
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.Nmin, 0; colors="0.4")
-    plt.plot(1e6a, 1e6emin_Nmin, color="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
+    plt.plot(1e6bounds.a, 1e6bounds.full.Nmin, color="0.4")
     plt.xlabel("Core radius (μm)")
     plt.gca().set_yticklabels([])
     plt.title("Minimum soliton order")
@@ -183,8 +250,7 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.pcolormesh(1e6a, 1e6energy, ratios.Nmax; cmap="Spectral_r")
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.Nmax, 0; colors="0.4")
-    plt.plot(1e6a, 1e6emax_Nmax, color="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
+    plt.plot(1e6bounds.a, 1e6bounds.full.Nmax, color="0.4")
     plt.xlabel("Core radius (μm)")
     plt.gca().set_yticklabels([])
     plt.title("Maximum soliton order")
@@ -280,11 +346,12 @@ end
 
 Find the minimum energy and core size which can be used to drive RDW emission in HCF
 for an RDW target wavelength `λ_target`, pump wavelength `λ0`, fill gas `gas` and 
-pump duration `τfwhm`. Safety factors can be given as keyword arguments:
+pump duration `τfwhm`, as determined by the loss limit.
 
+Safety factors can be given as keyword arguments:
 - `S_sf` (default 5): Maximum fraction of the critical power in the pump pulse
 - `S_ion` (default 10): Maximum fraction of barrier-suppression intensity in the pump pulse
-- `S_loss` (default 1): Maximum ration L_loss/L_fiss where L_loss is the loss length
+- `S_loss` (default 1): Maximum ratio L_loss/L_fiss where L_loss is the loss length
                         and L_fiss is the fission length
 
 Further `kwargs` `m`, `n` and `kind` determine the HCF mode.
@@ -368,7 +435,7 @@ function maximum_radius(λ_target, gas, λ0, τfwhm, energy, maxlength;
                         thickness=1e-3, material=:SiO2, Bmax=0.2,
                         LIDT=2000, S_fluence=5,
                         entrance_window=true, exit_window=true, kwargs...)
-    ρasq = Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0; kwargs...)
+    ρasq = density_area_product(λ_target, gas, λ0; kwargs...)
     T0, P0 = T0P0(τfwhm, energy)
     Δ_ = Δ(gas, λ0, ρasq; kwargs...)
     n20 = n2_0(gas)
@@ -386,7 +453,7 @@ function maximum_radius(λ_target, gas, λ0, τfwhm, energy, maxlength;
 
     p = Polynomial([D, C, B, A])
     r = roots(p)
-    real(filter(isreal, r))
+    real(filter(isreal, r))[1]
 end
 
 
