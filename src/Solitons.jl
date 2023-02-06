@@ -113,6 +113,10 @@ function Δβρ(λ_target, gas, λ0)
     (ωRDW*γ1_RDW - ωRDW*γ1_0 - ωRDW*ω0*γ11_0 + ω0^2*γ11_0)/(2*c)
 end
 
+function density_area_product(λ_target, gas, λ0; kwargs...)
+    Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0; kwargs...)
+end
+
 function RDW_density(λ_target, a, gas, λ0, τfwhm=Inf, energy=0; kwargs...)
     top = Δβwg(λ_target, λ0; kwargs...)/a^2
     bot = Δβρ(λ_target, gas, λ0)
@@ -174,25 +178,27 @@ end
 
 """
     N_to_energy(N, a, gas, λ0, λzd, τfwhm; kwargs...)
+    N_to_energy(N, a, gas, λ0, τfwhm; ρasq, kwargs...)
 
 Convert soliton order `N` to energy for core radius `a` filled with `gas`
 such that the ZDW is `λzd` and when pumping at `λ0` with a duration `τfwhm`.
-Further `kwargs` `m`, `n` and `kind` determine the HCF mode.
+Further `kwargs` `m`, `n` and `kind` determine the HCF mode. `ρasq` can be
+given as a keyword argument instead of `λzd`.
 """
-function N_to_energy(N, a, gas, λ0, λzd, τfwhm; kwargs...)
+N_to_energy(N, a, args...; kwargs...) = N_to_energy(args...; kwargs...)(N, a)
+
+function N_to_energy(gas::Symbol, λ0, λzd, τfwhm; kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
-    β2 = HCF.δ(gas, λ0, λzd; kwargs...)/a^2
-    γ = HCF.γ(a, gas, λ0; λzd, kwargs...)
-    P0 = N^2*abs(β2)/(T0^2*γ)
-    2*T0*P0
+    δ = HCF.δ(gas, λ0, λzd; kwargs...)
+    γ = HCF.γ(gas, λ0; λzd, kwargs...)
+    (N, a) -> 2*T0*N^2*abs(δ)/(T0^2*γ)*a^2
 end
 
-function N_to_energy(N, a, gas, λ0, τfwhm; ρasq, kwargs...)
+function N_to_energy(gas, λ0, τfwhm; ρasq, kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
-    β2 = HCF.Δ(gas, λ0, ρasq; kwargs...)/a^2
-    γ = HCF.γ(a, gas, λ0; ρasq, kwargs...)
-    P0 = N^2*abs(β2)/(T0^2*γ)
-    2*T0*P0
+    Δ = HCF.Δ(gas, λ0, ρasq; kwargs...)
+    γ = HCF.γ(gas, λ0; ρasq, kwargs...)
+    (N, a) -> 2*T0*N^2*abs(Δ)/(T0^2*γ)*a^2
 end
 
 end

@@ -105,21 +105,21 @@ function γ(a, gas, pressure, λ0; kwargs...)
     ω0/c*n2/Aeff(a; kwargs...)
 end
 
-function γ(a, gas, λ0; λzd=nothing, ρasq=nothing, kwargs...)
+function γ(gas, λ0; λzd=nothing, ρasq=nothing, kwargs...)
+    n20 = Data.n2_0(gas)
     if ~isnothing(λzd)
-        n20 = Data.n2_0(gas)
         u_nm = get_unm(;kwargs...)
         f = fβ2(gas, λzd)
-        return n20*u_nm^2/(Aeff0(;kwargs...) * π*a^4*λ0*f)
+        return n20*u_nm^2/(Aeff0(;kwargs...) * π*λ0*f)
     elseif ~isnothing(ρasq)
         isnothing(λzd) || error("Only one of ρasq or λzd kwargs can be given")
-        n20 = Data.n2_0(gas)
-        aeff0 = Aeff0(;kwargs...)
-        return 2π/λ0 * n20 * ρasq/(aeff0*a^4)
+        return 2π/λ0 * n20 * ρasq/Aeff0(;kwargs...)
     else
         error("One of ρasq or λzd kwargs must be given")
     end
 end
+
+γ(a, args...; kwargs...) = γ(args...; kwargs...) / a^4
 
 # eq. S5 of Supplementary, Travers et al., Nat. Phot. 13, 547 (2019)
 fβ2(gas, λ) = Data.dγ1dλ(gas, λ, 2)
