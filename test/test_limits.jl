@@ -37,6 +37,10 @@ end
         @test isapprox(NmaxLuna, Nmax, rtol=1e-3)
         # Compare calculating via core radius and pressure
         @test isapprox(Nmax, HiSol.Limits.Nmax_ion(a, gi, pressure, λ0i, τi), rtol=1e-5)
+        # Compare calculating via ρasq instead of λzd
+        ρasq = HiSol.Data.density(gi, pressure) * a^2
+        Nmax2 = HiSol.Limits.Nmax_ion(gi, λ0i, τi; ρasq)
+        @test isapprox(Nmax, Nmax2; rtol=1e-3)
     end
 end
 
@@ -64,5 +68,9 @@ end
         @test isapprox(NmaxLuna, Nmax, rtol=1e-3)
         # Compare calculating via core radius and pressure
         @test isapprox(Nmax, HiSol.Limits.Nmax_sf(a, gi, pressure, λ0i, τi), rtol=1e-5)
+        # Compare calculating via ρasq instead of λzd
+        ρasq = HiSol.Data.density(gi, pressure) * a^2
+        Nmax2 = HiSol.Limits.Nmax_sf(gi, λ0i, τi; ρasq)
+        @test isapprox(Nmax, Nmax2; rtol=1e-3)
     end
 end
