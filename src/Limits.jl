@@ -3,7 +3,7 @@ import Luna.PhysData: density, pressure, γ3_gas, ε_0, c, ionisation_potential
 import Luna.Ionisation: barrier_suppression
 import Luna.Tools: field_to_intensity
 import HiSol.Solitons: τfwhm_to_T0, T0P0, Δβwg, Δβρ
-import HiSol.HCF: Aeff0, δ, fβ2, get_unm, ZDW
+import HiSol.HCF: Aeff0, δ, fβ2, get_unm, ZDW, Δ
 import HiSol.Data: n2_0, n2_gas
 
 """
@@ -89,6 +89,14 @@ function Nmax_ion(λzd, gas, λ0, τfwhm; S_ion=10, kwargs...)
     sqrt(T0^2*n20*Isupp*u_nm^2 / (S_ion*π*λ0*abs(δ(gas, λ0, λzd; kwargs...))*fβ2(gas, λzd)))
 end
 
+function Nmax_ion(gas, λ0, τfwhm; ρasq, S_ion=10, kwargs...)
+    Isupp = barrier_suppression_intensity(gas)
+    n20 = n2_0(gas)
+    T0 = τfwhm_to_T0(τfwhm)
+    Δ_ = Δ(gas, λ0, ρasq)
+    sqrt(2π*n20*ρasq*Isupp*T0^2/(λ0*abs(Δ_)*S_ion))
+end
+
 function Nmax_ion(a, gas, pressure, λ0, τfwhm; S_ion=10, kwargs...)
     Nmax_ion(ZDW(a, gas, pressure; kwargs...), gas, λ0, τfwhm; S_ion, kwargs...)
 end
@@ -96,8 +104,17 @@ end
 function Nmax_sf(λzd, gas, λ0, τfwhm; S_sf=5, kwargs...)
     # eq. (S15) in Supplementary, Travers et al., Nat. Phot. 13, 547 (2019)
     # But with factor in Pcrit of 1.86225 instead of 3
+    # and general prefactor for the effective area (instead of 3/2)
     T0 = τfwhm_to_T0(τfwhm)
-    sqrt(1.86225T0^2*λ0/(3*S_sf*abs(δ(gas, λ0, λzd; kwargs...))))
+    ae0 = Aeff0(;kwargs...)
+    sqrt(1.86225T0^2*λ0/(2*ae0*S_sf*abs(δ(gas, λ0, λzd; kwargs...))))
+end
+
+function Nmax_sf(gas, λ0, τfwhm; ρasq, S_sf=5, kwargs...)
+    T0 = τfwhm_to_T0(τfwhm)
+    ae0 = Aeff0(;kwargs...)
+    Δ_ = Δ(gas, λ0, ρasq)
+    sqrt(1.86225T0^2*λ0/(2*ae0*S_sf*abs(Δ_)))
 end
 
 function Nmax_sf(a, gas, pressure, λ0, τfwhm; S_sf=5, kwargs...)
