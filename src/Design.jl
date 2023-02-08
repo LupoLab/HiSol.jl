@@ -368,6 +368,15 @@ function min_energy(λ_target, λ0, gas, τfwhm; S_sf=5, S_ion=10, S_loss=1, kwa
     e, a
 end
 
+function min_energy_loss(λ_target, λ0, gas, τfwhm; S_fiss=1.5, kwargs...)
+    αbar = αbar_a(λ0; kwargs...)
+    ρasq = density_area_product(λ_target, gas, λ0; kwargs...)
+    T0 = τfwhm_to_T0(τfwhm)
+    Δ_ = Δ(gas, λ0, ρasq; kwargs...)
+    
+    αbar^2 * S_fiss^2 * T0^3*λ0*Aeff0(;kwargs...)/(π*n2_0(gas)*ρasq*abs(Δ_))
+end
+
 """
     max_energy(λ_target, λ0, gas, τfwhm, maxlength; kwargs...)
 
