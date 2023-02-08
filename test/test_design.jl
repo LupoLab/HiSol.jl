@@ -56,3 +56,33 @@ end
         end
     end
 end
+
+@testset "max radius, $(1e6energy) μJ, $(λ_target*1e9) nm" for energy in 1e-6*(100:100:2000), λ_target in 100e-9:100e-9:400e-9
+    λ0 = 800e-9
+    gas = :HeJ
+    τfwhm = 10e-15
+    maxlength = 5
+
+    LIDT = 2000
+    S_fluence = 5
+    Bmax = 0.2
+    material = :SiO2
+    thickness = 1e-3
+    S_fiss = 1.5
+
+    @testset "Window in: $entrance_window, window out: $exit_window" for entrance_window in (true, false), exit_window in (true, false)
+        amax = HiSol.Design.maximum_radius(λ_target, gas, λ0, τfwhm, energy, maxlength;
+                                           S_fiss, thickness, material, Bmax, LIDT, S_fluence,
+                                           entrance_window, exit_window)
+
+        dwin = HiSol.Focusing.window_distance(amax, λ0, energy, τfwhm, thickness; material, Bmax)
+        dmir = HiSol.Focusing.mirror_distance(amax, λ0, energy, LIDT; S_fluence)
+
+        pressure = HiSol.Solitons.RDW_pressure(λ_target, amax, gas, λ0)
+        Lf = HiSol.Solitons.fission_length(amax, gas, pressure, λ0, τfwhm, energy)
+
+        d = (entrance_window ? dwin : dmir) + (exit_window ? dwin : dmir)
+
+        @test isapprox(S_fiss*Lf + d, maxlength, rtol=1e-3)
+    end
+end

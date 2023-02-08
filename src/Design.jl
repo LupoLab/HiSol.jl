@@ -9,8 +9,6 @@ import HiSol.HCF: intensity_modeavg, loss_length, ZDW, αbar_a, δ, fβ2, get_un
 import HiSol.Focusing: max_flength
 import HiSol.Data: n2_0, n2_solid
 
-patches = PyCall.pyimport("matplotlib.patches")
-
 function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                         thickness=1e-3, material=:SiO2, Bmax=0.2,
                         LIDT=2000, S_fluence=5,
@@ -146,7 +144,7 @@ function boundaries(
         LIDT, S_fluence,
         S_fiss, kwargs...)
 
-    a = collect(range(0.9amin_loss, 1.1maximum(amax), Nplot))
+    a = collect(range(0.9amin_loss, 1.5maximum(amax), Nplot))
 
     ρasq = density_area_product(λ_target, gas, λ0; kwargs...)
     λzd = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
@@ -185,10 +183,13 @@ function boundaries(
     ii = (energy .< emax_amax) .&& (energy .> emin_amax)
     top = hcat(amax[ii], energy[ii])
 
+    full = (loss=emin_loss, Nmax=energy_Nmax, Nmin=energy_Nmin, length=amax)
+    verts = vcat(bottom, right,
+                 reverse(top; dims=1), reverse(left; dims=1))
+    cropped = (loss=bottom, Nmax=left, Nmin=right, length=top, vertices=verts)
 
-    (full=(loss=emin_loss, Nmax=energy_Nmax, Nmin=energy_Nmin, length=amax),
-     cropped=(loss=bottom, Nmax=left, Nmin=right, length=top),
-     a=a, energy=energy)
+    a, energy, full, cropped
+
 end
 
 function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
@@ -203,14 +204,17 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
         LIDT, S_fluence,
         S_sf, S_ion, S_fiss, Nplot, kwargs...)
 
-    bounds = boundaries(
+    ab, energyb, full, cropped = boundaries(
         λ_target, gas, λ0, τfwhm, maxlength;
         thickness, material, Bmax,
         entrance_window, exit_window,
         LIDT, S_fluence,
         S_sf, S_ion, S_fiss, Nplot,
         kwargs...)
-    
+
+    patch = plt.Polygon(1e6cropped.vertices; closed=false,
+                               facecolor="0.5", edgecolor="none", alpha=0.3)
+
 
     fig = plt.figure()
     fig.set_size_inches(12, 3.5)
@@ -219,43 +223,45 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.loss, 0; colors="0.4")
     plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
-    plt.axhline(1e6bounds.full.loss; color="0.4")
-    plt.scatter(bounds.cropped.loss[:, 1]*1e6, bounds.cropped.loss[:, 2]*1e6)
-    plt.scatter(bounds.cropped.Nmin[:, 1]*1e6, bounds.cropped.Nmin[:, 2]*1e6)
-    plt.scatter(bounds.cropped.Nmax[:, 1]*1e6, bounds.cropped.Nmax[:, 2]*1e6)
-    plt.scatter(bounds.cropped.length[:, 1]*1e6, bounds.cropped.length[:, 2]*1e6)
+    plt.axhline(1e6full.loss; color="0.4")
+    # plt.plot(1e6allbounds[:, 1], 1e6allbounds[:, 2])
+    plt.gca().add_patch(patch)
     plt.ylabel("Energy (μJ)")
     plt.xlabel("Core radius (μm)")
     plt.title("Loss")
     plt.ylim(extrema(1e6energy))
+    plt.xlim(extrema(1e6a))
     plt.subplot(1, 4, 2)
     plt.pcolormesh(1e6a, 1e6energy, ratios.fiss; cmap="Spectral_r")
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.fiss, 0; colors="0.4")
-    plt.plot(bounds.full.length*1e6, bounds.energy*1e6, color="0.4")
+    plt.plot(full.length*1e6, energyb*1e6, color="0.4")
     plt.gca().set_yticklabels([])
     plt.xlabel("Core radius (μm)")
     plt.title("Fission length")
     plt.ylim(extrema(1e6energy))
+    plt.xlim(extrema(1e6a))
     plt.subplot(1, 4, 3)
     plt.pcolormesh(1e6a, 1e6energy, ratios.Nmin; cmap="Spectral_r")
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.Nmin, 0; colors="0.4")
-    plt.plot(1e6bounds.a, 1e6bounds.full.Nmin, color="0.4")
+    plt.plot(1e6ab, 1e6full.Nmin, color="0.4")
     plt.xlabel("Core radius (μm)")
     plt.gca().set_yticklabels([])
     plt.title("Minimum soliton order")
     plt.ylim(extrema(1e6energy))
+    plt.xlim(extrema(1e6a))
     plt.subplot(1, 4, 4)
     plt.pcolormesh(1e6a, 1e6energy, ratios.Nmax; cmap="Spectral_r")
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.Nmax, 0; colors="0.4")
-    plt.plot(1e6bounds.a, 1e6bounds.full.Nmax, color="0.4")
+    plt.plot(1e6ab, 1e6full.Nmax, color="0.4")
     plt.xlabel("Core radius (μm)")
     plt.gca().set_yticklabels([])
     plt.title("Maximum soliton order")
     plt.ylim(extrema(1e6energy))
-
+    plt.xlim(extrema(1e6a))
+    
     fig.tight_layout()
 
     Lfiss_ok = params.Lfiss[idcs.all]
@@ -450,14 +456,18 @@ function maximum_radius(λ_target, gas, λ0, τfwhm, energy, maxlength;
     n20 = n2_0(gas)
     n2w = n2_solid(material)
     aeff0 = Aeff0(;kwargs...)
+    maxfluence = LIDT/S_fluence
     xa = 0.64
 
     # solving Aa³ + Ba² + Ca + D = 0
     # with B = 0
 
+    Cwin = sqrt(4*π^2*n2w*xa^2*thickness*P0/(λ0^3*Bmax))
+    Cmir = sqrt(2energy*π*xa^2/(λ0^2*maxfluence))
+
     A = S_fiss*sqrt(T0^2*aeff0*λ0/(2π*P0*n20*abs(Δ_)*ρasq))
     B = 0
-    C = 2*sqrt(4*π^2*n2w*xa^2*thickness*P0/(λ0^3*Bmax))
+    C = (entrance_window ? Cwin : Cmir) + (exit_window ? Cwin : Cmir)
     D = -maxlength
 
     p = Polynomial([D, C, B, A])
