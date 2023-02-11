@@ -14,7 +14,7 @@ import PyPlot: plt
 function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                   thickness=1e-3, material=:SiO2, Bmax=0.2,
                   LIDT=2000, S_fluence=5, S_sf=1.5, S_ion=10,
-                  entrance_window=true, exit_window=true)
+                  entrance_window=true, exit_window=true, gradient=false)
     factor = τfwhm_in/τfwhm_out
 
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy)
@@ -28,7 +28,7 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 
     _, P0 = T0P0(τfwhm_in, energy)
 
-    φm = nonlinear_phase(factor)
+    φm = nonlinear_phase(factor) * (gradient ? 3/2 : 1.0)
 
     # φm = γP0Leff
     γLeff = φm/P0
@@ -90,7 +90,8 @@ end
 
 function params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                           thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5,
-                          entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5)
+                          entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5,
+                          gradient=false)
 
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy)
     ρ = ρcrit/S_sf
@@ -101,6 +102,7 @@ function params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 
     broadfac_req = τfwhm_in/τfwhm_out
     φnl_req = nonlinear_phase(broadfac_req)
+    φnl_req *= (gradient ? 3/2 : 1.0)
 
     k0 = 2π/λ0
     A0 = Aeff0()
@@ -134,12 +136,12 @@ end
 function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                        thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5, S_ion=10,
                        entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5,
-                       amin=25e-6, amax=500e-6, Na=512)
+                       amin=25e-6, amax=500e-6, Na=512, gradient=false)
     factor = τfwhm_in/τfwhm_out
 
     f = params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                          thickness, material, Bmax, S_sf,
-                         entrance_window, exit_window, LIDT, S_fluence)
+                         entrance_window, exit_window, LIDT, S_fluence, gradient)
 
 
     Isupp = barrier_suppression_intensity(gas)
