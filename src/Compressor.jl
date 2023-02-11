@@ -15,6 +15,7 @@ import PyPlot: plt
 function fix_pressure(pr, a, flength, gas, max_pressure, max_flow, ngradient)
     pr = min(pr, max_pressure)
     flow = 0.0
+    (flength <= 0) && return 0.0, 0.0
     if ngradient > 0
         flow = ngradient*slpm(tube_PVflow_choked(a, flength/ngradient, gas, pr*bar))
         if flow > max_flow
@@ -243,7 +244,7 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 
     plt.subplot(2, 4, 5)
     plt.plot(1e6a, flow)
-    plt.axhline(max_flow; linestyle="--", color="k", label="Limit")
+    plt.axhline(max_flow; linestyle="--", color="r", label="Limit")
     if ~ismissing(aopt)
         plt.plot(1e6aopt, flowopt, "o"; color="k", label=@sprintf("%.3f slpm", flowopt))
         plt.legend()
@@ -255,7 +256,7 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 
     plt.subplot(2, 4, 6)
     plt.plot(1e6a, pr)
-    plt.axhline(max_pressure; linestyle="--", color="k", label="Limit")
+    plt.axhline(max_pressure; linestyle="--", color="r", label="Limit")
     if ~ismissing(aopt)
         plt.plot(1e6aopt, propt, "o"; color="k", label=@sprintf("%.3f bar", propt))
         plt.legend()
