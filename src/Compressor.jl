@@ -4,7 +4,7 @@ import HiSol.Solitons: T0P0
 import HiSol.HCF: Aeff0, Leff, transmission, intensity_modeavg, α
 import HiSol.Focusing: max_flength, diverged_beam
 import HiSol.Data: n2_gas
-import Luna.PhysData: pressure
+import Luna.PhysData: pressure, density
 import Luna.Tools: τfw_to_τ0
 import Logging: @debug, @info
 import Printf: @sprintf
@@ -14,12 +14,17 @@ import PyPlot: plt
 function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                   thickness=1e-3, material=:SiO2, Bmax=0.2,
                   LIDT=2000, S_fluence=5, S_sf=1.5, S_ion=10,
-                  entrance_window=true, exit_window=true, gradient=false)
+                  entrance_window=true, exit_window=true, gradient=false,
+                  max_pressure=60.0)
     factor = τfwhm_in/τfwhm_out
 
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy)
     ρ = ρcrit/S_sf
     pr = pressure(gas, ρ)
+    if pr > max_pressure
+        pr = max_pressure
+        ρ = density(gas, pr)
+    end
     n2 = n2_gas(gas, pr)
     @debug(@sprintf("ρcrit: %.4e m⁻³", ρcrit))
     @debug(@sprintf("ρ: %.4e m⁻³", ρ))
@@ -91,11 +96,15 @@ end
 function params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                           thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5,
                           entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5,
-                          gradient=false)
+                          gradient=false, max_pressure=60.0)
 
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy)
     ρ = ρcrit/S_sf
     pr = pressure(gas, ρ)
+    if pr > max_pressure
+        pr = max_pressure
+        ρ = density(gas, pr)
+    end
     n2 = n2_gas(gas, pr)
 
     _, P0 = T0P0(τfwhm_in, energy)
@@ -136,12 +145,13 @@ end
 function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                        thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5, S_ion=10,
                        entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5,
-                       amin=25e-6, amax=500e-6, Na=512, gradient=false)
+                       amin=25e-6, amax=500e-6, Na=512, gradient=false, max_pressure=60.0)
     factor = τfwhm_in/τfwhm_out
 
     f = params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                          thickness, material, Bmax, S_sf,
-                         entrance_window, exit_window, LIDT, S_fluence, gradient)
+                         entrance_window, exit_window, LIDT, S_fluence, gradient,
+                         max_pressure)
 
 
     Isupp = barrier_suppression_intensity(gas)
@@ -160,7 +170,8 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 
     try
         global aopt, flopt, _, topt = optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                        thickness, material, Bmax, S_sf, S_ion, LIDT, S_fluence, entrance_window, exit_window)
+                        thickness, material, Bmax, S_sf, S_ion, LIDT, S_fluence, entrance_window, exit_window,
+                        gradient, max_pressure)
         global intopt = P0/(A0*aopt^2)
     catch e
         global aopt = missing
