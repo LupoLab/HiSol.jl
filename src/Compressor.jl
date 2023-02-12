@@ -34,7 +34,7 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                   thickness=1e-3, material=:SiO2, Bmax=0.2,
                   LIDT=2000, S_fluence=5, S_sf=1.5, S_ion=10,
                   entrance_window=true, exit_window=true, ngradient=0,
-                  max_pressure=60.0, max_flow=1.0)
+                  max_pressure=60.0, max_flow=1.0, polarisation=:linear)
     factor = τfwhm_in/τfwhm_out
 
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy)
@@ -49,6 +49,7 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 
     φm = nonlinear_phase(factor)
     φm *= (ngradient > 0 ? 3/2 : 1.0)
+    φm *= (polarisation == :circular ? 3/2 : 1.0)
 
     # φm = γP0Leff
     γLeff = φm/P0
@@ -89,7 +90,8 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                      Decrease the compression factor or increase the maximum length,
                      maximum pressure or maximum flow.""")
         end
-        if P0/(A0*aguess^2) > Isupp/S_ion
+        I_this = P0/(A0*aguess^2) * (polarisation == :circular ? 2/3 : 1.0)
+        if I_this > Isupp/S_ion
             error("""Could not find core radius: intensity too high.
                      Decrease the energy or increase the maximum length.""")
         end
@@ -116,11 +118,12 @@ end
 function params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                           thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5,
                           entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5,
-                          ngradient=0, max_pressure=60.0, max_flow=1.0)
+                          ngradient=0, max_pressure=60.0, max_flow=1.0, polarisation=:linear)
     _, P0 = T0P0(τfwhm_in, energy)
     broadfac_req = τfwhm_in/τfwhm_out
     φnl_req = nonlinear_phase(broadfac_req)
     φnl_req *= (ngradient > 0 ? 3/2 : 1.0)
+    φnl_req *= (polarisation == :circular ? 3/2 : 1.0)
     k0 = 2π/λ0
     A0 = Aeff0()
 
@@ -146,7 +149,7 @@ function params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 
         γLeff = γthis * Leff(flength, a, λ0)
         t = transmission.(flength, a, λ0)
-        intensity = P0/(A0*a^2)
+        intensity = P0/(A0*a^2) * (polarisation == :circular ? 2/3 : 1.0)
         φnl = P0*γLeff
         window_distance = (maxlength-maxflength)/2
         beamsize_w0 = diverged_beam(a, λ0, window_distance)
@@ -160,13 +163,13 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                        thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5, S_ion=10,
                        entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5,
                        amin=25e-6, amax=500e-6, Na=512,
-                       ngradient=0, max_pressure=60.0, max_flow=1.0)
+                       ngradient=0, max_pressure=60.0, max_flow=1.0, polarisation=:linear)
     factor = τfwhm_in/τfwhm_out
 
     f = params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                          thickness, material, Bmax, S_sf,
                          entrance_window, exit_window, LIDT, S_fluence, ngradient,
-                         max_pressure, max_flow)
+                         max_pressure, max_flow, polarisation)
 
     Isupp = barrier_suppression_intensity(gas)
     A0 = Aeff0()
@@ -186,8 +189,8 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     try
         global aopt, flopt, propt, flowopt, topt = optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                         thickness, material, Bmax, S_sf, S_ion, LIDT, S_fluence, entrance_window, exit_window,
-                        ngradient, max_pressure, max_flow)
-        global intopt = P0/(A0*aopt^2)
+                        ngradient, max_pressure, max_flow, polarisation)
+        global intopt = P0/(A0*aopt^2) * (polarisation == :circular ? 2/3 : 1.0)
     catch e
         global aopt = missing
     end
