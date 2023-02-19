@@ -123,6 +123,7 @@ end
 
 """
     Nmax(λzd, gas, λ0, τfwhm; S_sf=5, S_ion=10, kwargs...)
+    Nmax(gas, λ0, τfwhm; ρasq, S_sf=5, S_ion=10, kwargs...)
     Nmax(a, gas, pressure, λ0, τfwhm; S_sf=5, S_ion=10, kwargs...)
 
 Find the maximum soliton order in the given `gas`
