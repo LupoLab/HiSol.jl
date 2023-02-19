@@ -155,6 +155,10 @@ function ZDW_density(λzd, a, gas; kwargs...)
     get_unm(;kwargs...)^2/(2*π^2*a^2*fβ2(gas, λzd))
 end
 
+function ZDW_density_area_product(λzd, gas; kwargs...)
+    get_unm(;kwargs...)^2/(2*π^2*fβ2(gas, λzd))
+end
+
 ZDW_pressure(λzd, a, gas; kwargs...) = pressure(gas, ZDW_density(λzd, a, gas; kwargs...))
 
 end
