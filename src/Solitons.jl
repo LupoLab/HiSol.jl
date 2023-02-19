@@ -117,6 +117,14 @@ function density_area_product(λ_target, gas, λ0; kwargs...)
     Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0; kwargs...)
 end
 
+"""
+    RDW_density(λ_target, a, gas, λ0, τfwhm=Inf, energy=0; kwargs...)
+
+Calculate the phase-matching `gas` density for RDW emission at `λ_target` in an
+HCF with core radius `a` when pumping at `λ0`. The nonlinear contribution is taken
+into account when both `τfwhm` and `energy` are given. The HCF mode can be
+set by the keyword arguments `n`, `m`, and `kind`.
+"""
 function RDW_density(λ_target, a, gas, λ0, τfwhm=Inf, energy=0; kwargs...)
     top = Δβwg(λ_target, λ0; kwargs...)/a^2
     bot = Δβρ(λ_target, gas, λ0)
@@ -132,6 +140,14 @@ function RDW_density(λ_target, a, gas, λ0, τfwhm=Inf, energy=0; kwargs...)
     top/bot
 end
 
+"""
+    RDW_pressure(λ_target, a, gas, λ0, τfwhm=Inf, energy=0; kwargs...)
+
+Calculate the phase-matching `gas` pressure for RDW emission at `λ_target` in an
+HCF with core radius `a` when pumping at `λ0`. The nonlinear contribution is taken
+into account when both `τfwhm` and `energy` are given. The HCF mode can be
+set by the keyword arguments `n`, `m`, and `kind`.
+"""
 RDW_pressure(λ_target, a, gas, args...; kwargs...) = pressure(
     gas,
     RDW_density(λ_target, a, gas, args...; kwargs...)
@@ -194,7 +210,7 @@ function N_to_energy(gas::Symbol, λ0, λzd, τfwhm; kwargs...)
     (N, a) -> 2*T0*N^2*abs(δ)/(T0^2*γ)*a^2
 end
 
-function N_to_energy(gas, λ0, τfwhm; ρasq, kwargs...)
+function N_to_energy(gas::Symbol, λ0, τfwhm; ρasq, kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
     Δ = HCF.Δ(gas, λ0, ρasq; kwargs...)
     γ = HCF.γ(gas, λ0; ρasq, kwargs...)
