@@ -230,4 +230,9 @@ function gauss_chirp(τfwhm1, τfwhm2)
     τ0FTL*sqrt(τ0^2 - τ0FTL^2)
 end
 
+function gauss_chirped_duration(τfwhm, φ2)
+    τ0 = τfw_to_τ0(τfwhm, :gauss)
+    τfwhm*sqrt(φ2^2/τ0^4 + 1)
+end
+
 end
