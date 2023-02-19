@@ -53,7 +53,7 @@ function n2_solid(material)
 end
 
 function gas_viscosity(gas)
-    if gas == :He
+    if gas in (:He, :HeJ)
         return 19.6e-6
     elseif gas == :Ne
         return 31.9e-6
@@ -71,7 +71,7 @@ function gas_viscosity(gas)
 end
 
 function gas_mass(gas)
-    if gas == :He
+    if gas in (:He, :HeJ)
         m = 4
     elseif gas == :Ne
         m = 20.1797
@@ -95,7 +95,7 @@ end
 mean_speed(gas, T=roomtemp) = sqrt(8*k_B*T/(π*gas_mass(gas)))
 
 function adiabatic_ratio(gas)
-    if gas == :He
+    if gas in (:He, :HeJ)
         return 1.66
     elseif gas == :Ne
         return 1.64
