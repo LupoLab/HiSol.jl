@@ -120,6 +120,15 @@ function kerr_lens(w0, peakpower, thickness; material=:SiO2)
     π*w0^4/(8*n2*thickness*peakpower)
 end
 
+"""
+    get_Bint(λ0, τfwhm, peakpower, w0, thickness; material=:SiO2, prop=true)
+
+Calculate B-integral for a pulse at `λ0` with duration `τfwhm` and `peakpower` in a beam
+with 1/e² radius `w0` when propagating through a window made of `material` of given `thickness`.
+
+If `prop` is `true`, the dispersion of the window (and variable peak power) is taken into account
+through numerical propagation.
+"""
 function get_Bint(λ0, τfwhm, peakpower, w0, thickness;
                   material=:SiO2, prop=true)
     n2 = n2_solid(material)
