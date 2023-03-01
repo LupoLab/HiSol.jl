@@ -98,7 +98,7 @@ function RDW_wavelength(a, gas, pressure, λ0, τfwhm=Inf, energy=0; kwargs...)
 end
 
 function Δβwg(λ_target, λ0; kwargs...)
-    u_nm = HCF.get_unm(kwargs...) # Bessel 0
+    u_nm = HCF.get_unm(;kwargs...) # Bessel 0
     ωRDW = wlfreq(λ_target) # RDW frequency
     ω0 = wlfreq(λ0) # pump frequency
     u_nm^2*c/2*(1/ωRDW - 2/ω0 + ωRDW/ω0^2)
@@ -162,7 +162,7 @@ find the corresponding zero-dispersion wavelength. Further `kwargs`
 """
 function RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
     ρasq_rdw = Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0)
-    u_nm = HCF.get_unm(kwargs...)
+    u_nm = HCF.get_unm(;kwargs...)
 
     ω_target = wlfreq(λ_target)
     ω0 = wlfreq(λ0)
