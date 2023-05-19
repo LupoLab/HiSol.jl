@@ -85,7 +85,7 @@ function Nmax_ion(λzd, gas, λ0, τfwhm; S_ion=10, kwargs...)
     Isupp = barrier_suppression_intensity(gas)
     n20 = n2_0(gas)
     T0 = τfwhm_to_T0(τfwhm)
-    u_nm = get_unm(kwargs...)
+    u_nm = get_unm(;kwargs...)
     sqrt(T0^2*n20*Isupp*u_nm^2 / (S_ion*π*λ0*abs(δ(gas, λ0, λzd; kwargs...))*fβ2(gas, λzd)))
 end
 
