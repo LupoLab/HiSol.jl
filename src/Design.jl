@@ -157,9 +157,6 @@ function boundaries(
     energy_Nmin = N2e.(Nmin_, a)
     energy_Nmax = N2e.(Nmax_, a)
 
-    ii = (energy_Nmin .< emin_loss) .&& (energy_Nmax .> emin_loss)
-    bottom = hcat(a[ii], emin_loss*ones(count(ii)))
-
     amax_Nmax = maximum_radius.(
         λ_target, gas, λ0, τfwhm, energy_Nmax, maxlength;
         thickness, material, Bmax,
@@ -167,7 +164,7 @@ function boundaries(
         LIDT, S_fluence,
         S_fiss, kwargs...)
     ii = (energy_Nmax .> emin_loss) .&& (a .< amax_Nmax)
-    left = hcat(a[ii], energy_Nmax[ii])
+    top = hcat(a[ii], energy_Nmax[ii])
 
     amax_Nmin = maximum_radius.(
         λ_target, gas, λ0, τfwhm, energy_Nmin, maxlength;
@@ -176,17 +173,26 @@ function boundaries(
         LIDT, S_fluence,
         S_fiss, kwargs...)
     ii = (energy_Nmin .> emin_loss) .&& (a .< amax_Nmin)
-    right = hcat(a[ii], energy_Nmin[ii])
+    bottom = hcat(a[ii], energy_Nmin[ii])
 
     emin_amax = N2e.(Nmin_, amax)
     emax_amax = N2e.(Nmax_, amax)
-    ii = (energy .< emax_amax) .&& (energy .> emin_amax)
-    top = hcat(amax[ii], energy[ii])
+    ii = (energy .< emax_amax) .&& (energy .> emin_amax) .&& (energy .> emin_loss)
+    right = hcat(amax[ii], energy[ii])
+
+    amax_loss = maximum_radius.(
+        λ_target, gas, λ0, τfwhm, emin_loss, maxlength;
+        thickness, material, Bmax,
+        entrance_window, exit_window,
+        LIDT, S_fluence,
+        S_fiss, kwargs...)
+    ii = (energy_Nmin .< emin_loss) .&& (energy_Nmax .> emin_loss) .&& (a .< amax_loss)
+    left = hcat(a[ii], emin_loss*ones(count(ii)))
 
     full = (loss=emin_loss, Nmax=energy_Nmax, Nmin=energy_Nmin, length=amax)
     verts = vcat(bottom, right,
                  reverse(top; dims=1), reverse(left; dims=1))
-    cropped = (loss=bottom, Nmax=left, Nmin=right, length=top, vertices=verts)
+    cropped = (loss=left, Nmax=top, Nmin=bottom, length=right, vertices=verts)
 
     a, energy, full, cropped
 
