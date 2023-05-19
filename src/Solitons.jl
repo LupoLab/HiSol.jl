@@ -76,15 +76,15 @@ function fission_length(a, gas, λ0, τfwhm; N, λzd, kwargs...)
     T0^2*a^2/(N*abs(δ))
 end
 
-function RDW_wavelength(a, gas, pressure, λ0, τfwhm=Inf, energy=0; kwargs...)
+function RDW_wavelength(a, gas, pressure, λ0, τfwhm=Inf, energy=0; λmin=nothing, λmax=nothing, kwargs...)
     ω0 = wlfreq(λ0)
     λzd = HCF.ZDW(a, gas, pressure; kwargs...)
     β1 = HCF.dispersion(a, gas, pressure, λ0, 1; kwargs...)
     β0 = HCF.β(a, gas, pressure, λ0; kwargs...)
     β_s = β_sol(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
 
-    lbω = wlfreq(λzd)
-    ubω = wlfreq(Data.λmin[gas])
+    lbω = wlfreq(isnothing(λmax) ? λzd : λmax)
+    ubω = wlfreq(isnothing(λmin) ? Data.λmin[gas] : λmin)
 
     ωRDW = missing
     try
