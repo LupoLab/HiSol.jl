@@ -1,6 +1,6 @@
 module Data
 import Luna.Maths: derivative
-import Luna.PhysData: wlfreq, sellmeier_gas, m_u, roomtemp, k_B, c, ε_0, γ3_gas, density
+import Luna.PhysData: wlfreq, sellmeier_gas, m_u, roomtemp, k_B, c, ε_0, γ3_gas, density, pressure
 
 # minimum wavelengths to use in root-finding functions
 # determined by first UV resonance in the sellmeier expansion
