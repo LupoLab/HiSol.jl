@@ -13,7 +13,7 @@ PyPlot = "d330b81b-6aea-500a-939a-2ce795aea3ee"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 
 [compat]
-Luna = "0.3"
+Luna = "0.4"
 Polynomials = "3, 4"
 PyPlot = "2"
 Roots = "2"
