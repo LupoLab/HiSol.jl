@@ -2,8 +2,11 @@ module Focusing
 import HiSol.Data: n2_solid
 import HiSol.Solitons: T0P0
 import Luna.Maths: gauss, fwhm
-import Luna: FFTW, Grid, Fields
+import Luna: FFTW, Grid, Fields, Hankel
 import Luna.Modes: hquadrature
+import Luna.PhysData: c
+import LinearAlgebra: mul!, ldiv!
+import Luna.Capillary: besselj, get_unm
 
 """
     window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, Bmax=0.2)
@@ -148,6 +151,79 @@ function get_Bint(λ0, τfwhm, peakpower, w0, thickness;
     end
     I0int = 2*P0int/(π*w0^2)
     n2 * k0 * I0int
+end
+
+struct AperturePinholeFilter
+    q::Hankel.QDHT{0, 1, Float64}
+    Ek0::Vector{Float64}
+    Er::Vector{ComplexF64}
+    Ek::Vector{ComplexF64}
+    kz::Vector{Float64}
+    kperp_sq::Vector{Float64}
+    prop::Vector{ComplexF64}
+    φr_foc::Vector{Float64}
+    a::Float64
+    z::Float64
+    fullenergy::Float64
+end
+
+function AperturePinholeFilter(a, N; λmin, λmax)
+    w0 = 0.64*a
+    zr = rayleigh(w0, λmin)
+    dist = 4zr
+    # w1min = HiSol.Focusing.diverged_beam(a, λmin, dist)
+    w1max = diverged_beam(a, λmax, dist)
+    R = 4w1max
+
+    q = Hankel.QDHT(R, N)
+
+    unm = get_unm(1, 1, :HE)
+    Er0 = besselj.(0, unm*q.r/a) .* (q.r .<= a)
+    fullenergy = Hankel.integrateR(abs2.(Er0), q)
+    Ek0 = q * Er0
+    AperturePinholeFilter(q,
+                          Ek0, similar(Er0), similar(Ek0),
+                          zeros(N), q.k.^2, zeros(ComplexF64, N), zeros(N),
+                          a, dist, fullenergy)
+end
+
+function propagate!(af::AperturePinholeFilter)
+    mul!(af.Ek, af.q, af.Er) # transform to k space
+    @. af.Ek *= af.prop # propagation to pinhole plane
+    ldiv!(af.Er, af.q, af.Ek) # transform to real space
+end
+
+function crop!(af::AperturePinholeFilter, radius)
+    for ii in eachindex(af.Er)
+        if af.q.r[ii] > radius
+            af.Er[ii] = 0
+        end
+    end
+end
+
+function (af::AperturePinholeFilter)(ω, r_ap1, r_pin, r_ap2=r_ap1)
+    kzsq = (ω/c).^2 .- af.kperp_sq
+    kzsq[kzsq .<= 0] .= 0
+    af.kz .= sqrt.(kzsq)
+    af.Ek .= af.Ek0 # reset k-space field
+    af.prop .= exp.(-1im * af.z * (af.kz .- ω/c)) # propagator
+
+    @. af.Ek *= af.prop # propagation to aperture plane
+    ldiv!(af.Er, af.q, af.Ek) # transform to real space
+
+    crop!(af, r_ap1) # crop with aperture
+    f = af.z/2 # want distance at aperture to be 2f
+    af.φr_foc .= -af.kz .* af.q.r.^2/2f
+    af.Er .*= exp.(-1im * af.φr_foc) # add focusing phase
+
+    propagate!(af)
+
+    crop!(af, r_pin) # cut out with pinhole
+
+    propagate!(af)
+
+    crop!(af, r_ap2) # crop with aperture
+    Hankel.integrateR(abs2.(af.Er), af.q)/af.fullenergy
 end
 
 end
