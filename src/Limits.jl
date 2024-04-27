@@ -32,10 +32,10 @@ end
 Calculate the `gas` density at which the peak power of a pulse with FWHM duration `τfwhm` and `energy`
 is equal to the critical power.
 """
-function critical_density(gas, λ, τfwhm, energy)
+function critical_density(gas, λ, τfwhm, energy; shape=:sech)
     # Note here we use n_gas ~ 1, which is justified even for high pressure
     # (n_gas - 1 < 1e-3 typically)
-    _, P0 = T0P0(τfwhm, energy)
+    _, P0 = T0P0(τfwhm, energy; shape)
 
     γ3 = γ3_gas(gas)
     n2 = 1.86225 * λ^2/(4*π*P0)

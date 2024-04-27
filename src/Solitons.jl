@@ -4,15 +4,38 @@ import HiSol.HCF: intensity_modeavg
 import Roots: find_zero
 import Luna.PhysData: wlfreq, c, ε_0, γ3_gas, pressure
 
-const T0fac = (2*acosh(sqrt(2)))
+const T0fac = 2*acosh(sqrt(2))
+const T0facGauss = 2*sqrt(log(2))
 
-τfwhm_to_T0(τfwhm) = τfwhm / T0fac
+function τfwhm_to_T0(τfwhm; shape=:sech)
+    if shape == :sech
+        τfwhm / T0fac
+    elseif shape == :gauss
+        τfwhm / T0facGauss
+    else
+        error("Unknown pulse shape $shape")
+    end
+end
 
-T0_to_τfwhm(T0) = T0 * T0fac
+function T0_to_τfwhm(T0; shape=:sech)
+    if shape == :sech
+        T0 * T0fac
+    elseif shape == :gauss
+        T0 * T0facGauss
+    else
+        error("Unknown pulse shape $shape")
+    end
+end
 
-function T0P0(τfwhm, energy)
-    T0 = τfwhm_to_T0(τfwhm)
-    P0 = energy/2T0
+function T0P0(τfwhm, energy; shape=:sech)
+    T0 = τfwhm_to_T0(τfwhm; shape)
+    if shape == :sech
+        P0 = energy/2T0
+    elseif shape == :gauss
+        P0 = 2*sqrt(log(2)/π) * energy/τfwhm
+    else
+        error("Unknown pulse shape $shape")
+    end
     T0, P0
 end
 

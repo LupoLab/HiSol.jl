@@ -49,6 +49,26 @@ function n2_solid(material)
     elseif material == :CaF2
         # Ensley Optics Express Vol. 27, No. 26 / 23 December 2019 
         return 1.8e-20
+    elseif material == :CaCO3
+        # Kabaciński et al., 10.1364/OE.27.011018
+        return 3.22e-20
+    else
+        error("Unkown glass $material")
+    end
+end
+
+function elastic_limit(material)
+    # https://www.crystran.co.uk/media/wysiwyg/Datasheets/design-of-pressure-windows_1.pdf
+    if material == :SiO2
+        return 55e6
+    elseif material == :MgF2
+        return 49.6e6
+    elseif material == :CaF2
+        return 36.5e6
+    elseif material == :Al2O3
+        return 276e6
+    else
+        error("Unkown glass $material")
     end
 end
 

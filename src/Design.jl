@@ -1,5 +1,5 @@
 module Design
-import PyPlot: plt, PyCall
+import PyPlot: plt
 import Polynomials: Polynomial, roots
 import Luna: PhysData
 import Luna.Plotting: cmap_colours
