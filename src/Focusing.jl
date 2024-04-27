@@ -18,7 +18,7 @@ Calculate the minimum distance between the exit of an HCF with radius `a` and a 
 with a given `thickness` such that the B-integral for a pulse at wavelength `λ0` with `energy` and duration `τfwhm`
 (or a given `peakpower`) does not exceed `Bmax`.
 """
-function window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, Bmax=0.2; shape=:sech)
+function window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, Bmax=0.2, shape=:sech)
     _, P0 = T0P0(τfwhm, energy; shape)
     window_distance(a, λ0, P0, thickness; material, Bmax)
 end
@@ -125,7 +125,7 @@ function diverged_ROC(a, λ0, distance)
     distance*(1 + (zr/distance)^2)
 end
 
-function kerr_lens(w0, energy, τfwhm, thickness; material=:SiO2; shape=:sech)
+function kerr_lens(w0, energy, τfwhm, thickness; material=:SiO2, shape=:sech)
     n2 = getn2(material)
     _, P0 = T0P0(τfwhm, energy; shape)
     π*w0^4/(8*n2*thickness*P0)
