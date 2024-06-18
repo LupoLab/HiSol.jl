@@ -13,7 +13,7 @@ import PyPlot: plt
 
 function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                   thickness=1e-3, material=:SiO2, Bmax=0.2,
-                  LIDT=2000, S_fluence=5, S_sf=1.5, S_ion=10,
+                  LIDT=2000, S_fluence=5, S_sf=2.5, S_ion=10,
                   entrance_window=true, exit_window=true)
     factor = τfwhm_in/τfwhm_out
 
@@ -212,7 +212,7 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     plt.ylim(0, 2*Isupp*1e-4/S_ion)
     plt.legend()
     plt.xlabel("Core radius (μm)")
-    plt.ylabel("Intensity (W/cm\$^{-2}\$)")
+    plt.ylabel("Intensity (W/cm\$^{2}\$)")
 
     fig.tight_layout()
     plt.subplots_adjust(top=0.9)
