@@ -223,6 +223,47 @@ function plot_window_thickness_fixed(a, pressure, peakpower, λ0, λmax, apertur
     plt.legend()
 end
 
+"""
+    window_thickness_distance(a, pressure, τfwhm, energy, λ0, λmax, aperture_radius;
+        Bmax=0.2, material=:SiO2, aperture_factor=2, roundmm=true, shape=:sech)
+    window_thickness_distance(a, pressure, peakpower, λ0, λmax, aperture_radius;
+        Bmax=0.2, material=:SiO2, aperture_factor=2, roundmm=true, shape=:sech)
+
+Calculate the required window thickness and the mimimum and maximum distance between the
+exit of an HCF and the window.
+
+Calculate the required window thickness to hold the specified `pressure` for the specified
+window `material` and `aperture_radius`, and mimimum and maximum distance between the exit
+of an HCF with radius `a` and the window, such that the B-integral for a pulse at
+wavelength `λ0` with `energy` and duration `τfwhm` (or a given `peakpower`) does not exceed
+`Bmax`, and such that the beam at wavelength `λmax` does not diverge such that the Gaussian
+beam radius is less than `aperture_factor` smaller than `aperture_radius`.
+If `roundmm=true`, then force the window thickness to be the next largest mm multiple.
+"""
+function window_thickness_distance(a, pressure, τfwhm, energy, λ0, λmax, aperture_radius;
+                                       Bmax=0.2, material=:SiO2, aperture_factor=2,
+                                       roundmm=true, shape=:sech)
+    _, P0 = T0P0(τfwhm, energy; shape)
+    window_thickness_distance(a, pressure, P0, λ0, λmax, aperture_radius;
+                                  Bmax, material, aperture_factor, roundmm)
+end
+
+function window_thickness_distance(a, pressure, peakpower, λ0, λmax, aperture_radius;
+                                       Bmax=0.2, material=:SiO2, aperture_factor=2,
+                                       roundmm=true)
+    maximum_distance = beamsize_distance(0.64a, λmax, aperture_radius/aperture_factor)
+    pressure = max(pressure - 1.0, 1.0) # make sure can handle vacuum
+    thickness = window_thickness_breaking(pressure, aperture_radius, material)
+    if roundmm
+        thickness = ceil(thickness / 1e-3) * 1e-3
+    end
+    minimum_distance = window_distance(a, λ0, peakpower, thickness; material, Bmax)
+    if minimum_distance > maximum_distance
+        error("unable to find solution for given parameters")
+    end
+    (; thickness, minimum_distance, maximum_distance)
+end
+
 getmod(material::Number) = material
 getmod(material::Symbol) = elastic_limit(material)
 
