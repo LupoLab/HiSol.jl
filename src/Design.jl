@@ -481,50 +481,5 @@ function maximum_radius(λ_target, gas, λ0, τfwhm, energy, maxlength;
     real(filter(isreal, r))[1]
 end
 
-"""
-    LengthConstraint
-
-Abstract supertype for length constraints on HCF systems. `LengthConstraint`s should be *callable*
-with the signature (LC<:LengthConstraint)(a, energy, τfwhm; pressure) and return, as its first return value,
-a minimum distance between the HCF entrance/exit and whatever the constraint refers to. 
-"""
-abstract type LengthConstraint end
-
-struct FixedConstraint <: LengthConstraint
-    windidst::Float64 # fixed distance from fibre
-end
-
-struct NoConstraint <: LengthConstraint end
-
-struct DamageConstraint <: LengthConstraint
-    λref::Float64
-    LIDT::Float64
-    S_fluence::Float64
-end
-
-struct WindowConstraint{LT, mT, rtT} <: LengthConstraint
-    λref::Float64 # reference wavelength
-    λmax::Float64 # maximum wavelength we want to pass through unobstructed
-    nl::mT # Symbol (material) or Number (n₂)
-    Bmax::Float64 # Maximum B-integral
-    thickness::tT # Number (fixed) or nothing (variable)
-    round_thickness::rtT # true (round to next mm), false (do not round), or number (fraction of mm)
-    max_aperture_radius::Float64 # largest aperture radius we can use
-    aperture_factor::Float64 # ratio between aperture radius and w₀ (1/e² radius)
-    LIDT::LT # Number (take into account window damage) or nothing (ignore window damage)
-    S_fluence::Float64 # safety factor on LIDT
-end
-
-function WindowConstraint(λref, nl;
-                          λmax=λref, Bmax=0.2, thickness=nothing, round_thickness=false,
-                          max_aperture_radius=8e-3, aperture_factor=2,
-                          LIDT=nothing, S_fluence=5)
-    WindowConstraint(λref, λmax, nl, Bmax, thickness, round_thickness,
-                     max_aperture_radius, aperture_factor, LIDT, S_fluence)
-end
-
-function (wc::WindowConstraint)(a, energy, τfwhm; pressure)
-end
-
 
 end
