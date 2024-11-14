@@ -7,6 +7,7 @@ import Luna.Modes: hquadrature
 import Luna.PhysData: c
 import LinearAlgebra: mul!, ldiv!
 import Luna.Capillary: besselj, get_unm
+import Roots: find_zero
 import PyPlot: plt
 import Printf: @sprintf
 
@@ -46,6 +47,11 @@ function window_thickness_nonlinear(a, λ0, peakpower, distance; material=:SiO2,
     Bmax/(n2*k0*Iwindow)
 end
 
+function window_thickness_nonlinear(a, λ0, energy, τfwhm, distance; kwargs...)
+    _, peakpower = T0P0(τfwhm, energy; shape=:gauss)
+    window_thickness_nonlinear(a, λ0, peakpower, distance; kwargs...)
+end
+
 rayleigh(w0, λ) = π*w0^2/λ
 
 """
@@ -64,6 +70,7 @@ The maximum fluence is taken as `LIDT/S_fluence` for safety.
 - Layertec fs-optimised protected silver: 0.38 J/cm² = 3800 J/m²
 - High-power mirror for sub-picosecond pulses: 0.75 J/cm² = 7500 J/m²
 - High-LIDT mirror for Ti:Sapph pulses: 1 J/cm² = 10000 J/m²
+- Eksma femtoline AR coating for 1030 nm: 0.1 J/cm² = 1000 J/m²
 """
 function mirror_distance(a, λ0, energy, LIDT; S_fluence=5)
     w0 = 0.64a
@@ -169,20 +176,34 @@ function get_Bint(λ0, τfwhm, peakpower, w0, thickness;
     n2 * k0 * I0int
 end
 
-function plot_window_thickness_variable(a, pressure, peakpower, λ0, λmax;
+function plot_window_thickness_variable(a, pressure, energy, τfwhm, λ0, λmax;
                             Bmax=0.2, material=:SiO2, aperture_factor=2,
+                            LIDT=nothing, S_fluence=5,
                             max_aperture_radius=10e-3)
-    mindist = rayleigh(0.64a, λmax)
+    mindist = 0#rayleigh(0.64a, λmax)
     maxdist = beamsize_distance(0.64a, λmax, max_aperture_radius/aperture_factor)
     distance = collect(range(mindist, maxdist, 512))
 
+    if ~isnothing(LIDT)
+        LIDT_distance = mirror_distance(a, λ0, energy, LIDT; S_fluence)
+    end
+
     w0win = diverged_beam.(a, λmax, distance)
-    dNL = window_thickness_nonlinear.(a, λ0, peakpower, distance; material, Bmax)
+    dNL = window_thickness_nonlinear.(a, λ0, energy, τfwhm, distance; material, Bmax)
     dP = window_thickness_breaking.(pressure-1, aperture_factor*w0win, material)
 
     idx = findfirst(eachindex(distance)) do ii
         dNL[ii] >= dP[ii]
     end
+
+    dOpt = find_zero([0, maxdist]) do d
+        w0win_ = diverged_beam(a, λmax, d)
+        dNL_ = window_thickness_nonlinear(a, λ0, energy, τfwhm, d; material, Bmax)
+        dP_ = window_thickness_breaking(pressure-1, aperture_factor*w0win_, material)
+        dNL_ - dP_
+    end
+
+    # winOpt = aperture_factor*diverged_beam(a, λmax, dOpt)
 
     plt.figure()
     plt.plot(distance*1e2, dNL*1e3; label="Nonlinear limit")
@@ -190,6 +211,10 @@ function plot_window_thickness_variable(a, pressure, peakpower, λ0, λmax;
     plt.plot(distance[idx]*1e2, dNL[idx]*1e3, "k.";
              label=@sprintf("%.2f mm thickness, %.2f cm away, %.2f mm aperture",
                             dNL[idx]*1e3, distance[idx]*1e2, 1e3aperture_factor*w0win[idx]))
+    plt.axvline(dOpt*1e2; linestyle="--", color="0.5")
+    if ~isnothing(LIDT)
+        plt.axvline(LIDT_distance*1e2; linestyle="--", color="r")
+    end
     plt.xlabel("Distance (cm)")
     plt.ylabel("Window thickness (mm)")
     plt.legend()
