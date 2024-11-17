@@ -3,6 +3,7 @@ import PyPlot: plt
 import Polynomials: Polynomial, roots
 import Luna: PhysData
 import Luna.Plotting: cmap_colours
+using HiSol
 import HiSol.Solitons: Δβwg, Δβρ, T0P0, fission_length, N, RDW_to_ZDW, τfwhm_to_T0, N_to_energy, dispersion_length, nonlinear_length, density_area_product
 import HiSol.Limits: critical_intensity, barrier_suppression_intensity, Nmin, Nmax
 import HiSol.HCF: intensity_modeavg, loss_length, ZDW, αbar_a, δ, fβ2, get_unm, Aeff0, dispersion, Δ
@@ -494,13 +495,24 @@ struct FixedConstraint <: LengthConstraint
     windidst::Float64 # fixed distance from fibre
 end
 
+(fc::FixedConstraint)(a, energy, τfwhm; pressure=nothing) = fc.windist
+
 struct NoConstraint <: LengthConstraint end
+
+(nc::NoConstraint)(a, energy, τfwhm; pressure=nothing) = 0
 
 struct DamageConstraint <: LengthConstraint
     λref::Float64
     LIDT::Float64
     S_fluence::Float64
 end
+
+DamageConstraint(λref, LIDT; S_fluence=5) = DamageConstraint(λref, LIDT, S_fluence)
+
+function (dc::DamageConstraint)(a, energy, τfwhm; pressure=nothing)
+    Focusing.mirror_distance(a, dc.λref, energy, dc.LIDT; S_fluence=dc.S_fluence)
+end
+
 
 struct WindowConstraint{LT, mT, rtT} <: LengthConstraint
     λref::Float64 # reference wavelength
