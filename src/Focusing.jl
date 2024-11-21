@@ -47,8 +47,8 @@ function window_thickness_nonlinear(a, λ0, peakpower, distance; material=:SiO2,
     Bmax/(n2*k0*Iwindow)
 end
 
-function window_thickness_nonlinear(a, λ0, energy, τfwhm, distance; kwargs...)
-    _, peakpower = T0P0(τfwhm, energy; shape=:gauss)
+function window_thickness_nonlinear(a, λ0, energy, τfwhm, distance; shape=:sech, kwargs...)
+    _, peakpower = T0P0(τfwhm, energy; shape)
     window_thickness_nonlinear(a, λ0, peakpower, distance; kwargs...)
 end
 
@@ -180,37 +180,45 @@ function plot_window_thickness_variable(a, pressure, energy, τfwhm, λ0, λmax;
                             Bmax=0.2, material=:SiO2, aperture_factor=2,
                             LIDT=nothing, S_fluence=5,
                             max_aperture_radius=10e-3)
-    mindist = 0#rayleigh(0.64a, λmax)
+    mindist = 0
     maxdist = beamsize_distance(0.64a, λmax, max_aperture_radius/aperture_factor)
     distance = collect(range(mindist, maxdist, 512))
+
+    ΔP = max(pressure-1, 1) # make sure we can handle vacuum
 
     if ~isnothing(LIDT)
         LIDT_distance = mirror_distance(a, λ0, energy, LIDT; S_fluence)
     end
 
     w0win = diverged_beam.(a, λmax, distance)
-    dNL = window_thickness_nonlinear.(a, λ0, energy, τfwhm, distance; material, Bmax)
-    dP = window_thickness_breaking.(pressure-1, aperture_factor*w0win, material)
+    tNL = window_thickness_nonlinear.(a, λ0, energy, τfwhm, distance; material, Bmax)
+    tP = window_thickness_breaking.(ΔP, aperture_factor*w0win, material)
 
     idx = findfirst(eachindex(distance)) do ii
-        dNL[ii] >= dP[ii]
+        tNL[ii] >= tP[ii]
     end
 
-    dOpt = find_zero([0, maxdist]) do d
-        w0win_ = diverged_beam(a, λmax, d)
-        dNL_ = window_thickness_nonlinear(a, λ0, energy, τfwhm, d; material, Bmax)
-        dP_ = window_thickness_breaking(pressure-1, aperture_factor*w0win_, material)
-        dNL_ - dP_
+    tNL0 = window_thickness_nonlinear(a, λ0, energy, τfwhm, 0; material, Bmax)
+    tP0 = window_thickness_breaking(ΔP, aperture_factor*diverged_beam.(a, λmax, 0), material)
+    if tNL0 > tP0
+        dOpt = 0
+    else
+        dOpt = find_zero([0, 4maxdist]) do d
+            w0win_ = diverged_beam(a, λmax, d)
+            tNL_ = window_thickness_nonlinear(a, λ0, energy, τfwhm, d; material, Bmax)
+            tP_ = window_thickness_breaking(ΔP, aperture_factor*w0win_, material)
+            tNL_ - tP_
+        end
     end
 
     # winOpt = aperture_factor*diverged_beam(a, λmax, dOpt)
 
     plt.figure()
-    plt.plot(distance*1e2, dNL*1e3; label="Nonlinear limit")
-    plt.plot(distance*1e2, dP*1e3; label="Pressure limit")
-    plt.plot(distance[idx]*1e2, dNL[idx]*1e3, "k.";
+    plt.plot(distance*1e2, tNL*1e3; label="Nonlinear limit")
+    plt.plot(distance*1e2, tP*1e3; label="Pressure limit")
+    plt.plot(distance[idx]*1e2, tNL[idx]*1e3, "k.";
              label=@sprintf("%.2f mm thickness, %.2f cm away, %.2f mm aperture",
-                            dNL[idx]*1e3, distance[idx]*1e2, 1e3aperture_factor*w0win[idx]))
+                            tNL[idx]*1e3, distance[idx]*1e2, 1e3aperture_factor*w0win[idx]))
     plt.axvline(dOpt*1e2; linestyle="--", color="0.5")
     if ~isnothing(LIDT)
         plt.axvline(LIDT_distance*1e2; linestyle="--", color="r")
@@ -230,19 +238,19 @@ function plot_window_thickness_fixed(a, pressure, peakpower, λ0, λmax, apertur
     distance = collect(range(mindist, maxdist, 512))
 
     w0win = diverged_beam.(a, λmax, distance)
-    dNL = window_thickness_nonlinear.(a, λ0, peakpower, distance; material, Bmax)
-    dP = window_thickness_breaking(pressure-1, aperture_radius, material)
+    tNL = window_thickness_nonlinear.(a, λ0, peakpower, distance; material, Bmax)
+    tP = window_thickness_breaking(pressure-1, aperture_radius, material)
 
     idx = findfirst(eachindex(distance)) do ii
-        dNL[ii] >= dP
+        tNL[ii] >= tP
     end
 
     plt.figure()
-    plt.plot(distance*1e2, dNL*1e3; label="Nonlinear limit")
-    plt.axhline(dP*1e3; color="C1", label="Pressure limit")
-    plt.plot(distance[idx]*1e2, dNL[idx]*1e3, "k.";
+    plt.plot(distance*1e2, tNL*1e3; label="Nonlinear limit")
+    plt.axhline(tP*1e3; color="C1", label="Pressure limit")
+    plt.plot(distance[idx]*1e2, tNL[idx]*1e3, "k.";
     label=@sprintf("%.2f mm thickness, %.2f cm away",
-        dNL[idx]*1e3, distance[idx]*1e2))
+        tNL[idx]*1e3, distance[idx]*1e2))
     plt.xlabel("Distance (cm)")
     plt.ylabel("Window thickness (mm)")
     plt.legend()
@@ -289,6 +297,73 @@ function window_thickness_distance(a, pressure, peakpower, λ0, λmax, aperture_
         error("unable to find solution for given parameters")
     end
     (; thickness, minimum_distance, maximum_distance)
+end
+
+needround(r::Number) = true
+needround(r::Bool) = r
+
+rounding(r::Number) = r
+rounding(r::Bool) = 1
+
+function window_thickness_distance_variable(a, pressure, τfwhm, energy, λ0, λmax;
+                                   Bmax=0.2, n2=:SiO2,
+                                   elastic_limit=:SiO2, S_break=4,
+                                   aperture_factor=2,
+                                   round_thickness=false, round_aperture=false,
+                                   shape=:sech)
+    ΔP = max(pressure-1, 1) # make sure we can handle vacuum
+
+    tNL0 = window_thickness_nonlinear(a, λ0, energy, τfwhm, 0; material=n2, Bmax, shape)
+    tP0 = window_thickness_breaking(ΔP, aperture_factor*0.64a, elastic_limit; S_break)
+    if tNL0 > tP0
+        dOpt = 0
+    else
+        dOpt = find_zero([0, 50]) do d
+            w0win = diverged_beam(a, λmax, d)
+            tNL = window_thickness_nonlinear(a, λ0, energy, τfwhm, d; material=n2, Bmax, shape)
+            tP = window_thickness_breaking(ΔP, aperture_factor*w0win, elastic_limit; S_break)
+            tNL - tP
+        end
+    end
+
+    distance = dOpt
+    thickness = window_thickness_nonlinear(a, λ0, energy, τfwhm, dOpt;
+                                           material=n2, shape)
+    aperture = aperture_factor*diverged_beam(a, λmax, dOpt)
+    if needround(round_thickness) && needround(round_aperture)
+        #= allowable thickness (nonlinearity) increases quadratically
+        with distance, while minimum thickness for pressure increases
+        only linearly. Starting from the un-rounded optimum distance dOpt,
+        rounding up the aperture and adjusting the thickness, then checking
+        whether the distance is sufficient for that thickness, we will 
+        always find a distance where both conditions are satisfied.
+        =#
+        rt = rounding(round_thickness) * 1e-3
+        ra = rounding(round_aperture) * 1e-3
+        enough = false
+        n = 0
+        while ~enough && n < 20
+            println("$distance, $thickness, $aperture")
+            # round up aperture
+            aperture = ceil(aperture/ra)*ra
+            # need a thicker window for larger aperture
+            tP = window_thickness_breaking(ΔP, aperture, elastic_limit; S_break)
+            # round up thickness
+            thickness = ceil(max(tP, thickness)/rt)*rt
+            # distance required from nonlinearity constraint for new thickness
+            distance = window_distance(a, λ0, energy, τfwhm, thickness;
+                                       material=n2, shape)
+            # aperture required for new distance
+            min_aperture = aperture_factor*diverged_beam(a, λmax, distance)
+            enough = aperture > min_aperture
+            if ~enough
+                aperture = min_aperture
+            end
+            n += 1
+        end
+    end
+    return distance, thickness, aperture
+
 end
 
 getmod(material::Number) = material
