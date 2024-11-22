@@ -523,37 +523,84 @@ function (dc::DamageConstraint)(a, energy, τfwhm; pressure=nothing)
 end
 
 
-struct WindowConstraint{LT, mT, rtT, raT, tT, eT} <: LengthConstraint
+struct WindowConstraint{LT, mT, rtT, raT, tT, eT, τT, aT} <: LengthConstraint
     λref::Float64 # reference wavelength
     λmax::Float64 # maximum wavelength we want to pass through unobstructed
     n2::mT # Symbol (material) or Number (n₂)
     Bmax::Float64 # Maximum B-integral
     thickness::tT # Number (fixed) or nothing (variable)
     round_thickness::rtT # true (round to next mm), false (do not round), or number (fraction of mm)
-    max_aperture_radius::Float64 # largest aperture radius we can use
+    aperture::aT # Fixed aperture (Number) or variable aperture (nothing)
     aperture_factor::Float64 # ratio between aperture radius and w₀ (1/e² radius)
     round_aperture::raT # true (round to next mm), false (do not round), or number (fraction of mm)
     LIDT::LT # Number (take into account window damage) or nothing (ignore window damage)
     S_fluence::Float64 # safety factor on LIDT
     conversion::Float64 # conversion factor between input and output energy
     elastic_limit::eT # Symbol (material) or Number (modulus of rupture)
+    S_break::Float64 # Safety factor on pressure handling
+    τfwhm::τT # Can overwrite pulse duration for nonlinearity calculation if required
 end
 
 function WindowConstraint(λref, n2;
                           λmax=λref, Bmax=0.2, thickness=nothing, round_thickness=false,
-                          max_aperture_radius=8e-3, aperture_factor=2,
+                          aperture=8e-3, aperture_factor=2,
                           round_aperture=false,
                           LIDT=nothing, S_fluence=5,
                           conversion=1,
-                          elastic_limit=:SiO2)
+                          elastic_limit=nothing, S_break=4,
+                          τfwhm=nothing)
     WindowConstraint(λref, λmax, n2, Bmax, thickness, round_thickness,
-                     max_aperture_radius, aperture_factor, round_aperture,
+                     aperture, aperture_factor, round_aperture,
                      LIDT, S_fluence,
-                     conversion, elastic_limit)
+                     conversion, def_el(elastic_limit, n2), S_break,
+                     τfwhm)
 end
 
-function (wc::WindowConstraint)(a, energy, τfwhm; pressure)
+# find default elastic limit value
+def_el(el::Nothing, n2::Symbol) = n2 # if n2 is given as a material, use that
+def_el(el::Nothing, n2::Number) = :SiO2 # if n2 is given as number, use silica default
+def_el(el, n2) = el # if elastic limit is given directly, use that
 
+function (wc::WindowConstraint)(a, energy, τfwhm; pressure)
+    energy *= wc.conversion
+    τfwhm = isnothing(wc.τfwhm) ? τfwhm : wc.τfwhm
+    dLIDT = isnothing(w.LIDT) ? 0 : HiSol.Focusing.mirror_distance(
+        a, wc.λref, energy, wc.LIDT; S_fluence=wc.S_fluence
+    )
+    if isnothing(wc.aperture) && isnothing(wc.thickness)
+        # thickness and aperture are variable
+        distance, _, _ = HiSol.Focusing.window_distance_thickness_aperture(
+            a, pressure, τfwhm, energy, wc.λref, wc.λmax;
+            Bmax=wc.Bmax, n2=wc.n2,
+            elastic_limit=wc.elastic_limit, S_break=wc.S_break,
+            aperture_factor=wc.aperture_factor,
+            round_thickness=wc.round_thickness,
+            round_aperture=wc.round_aperture,
+        )
+    elseif isnothing(wc.aperture)
+        # aperture is variable, thickness is fixed
+        distance = HiSol.Focusing.window_distance(a, wc.λref, energy, τfwhm, wc.thickness;
+                                                  material=wc.n2, Bmax=wc.Bmax)
+        aperture = wc.aperture_factor * HiSol.Focusing.diverged_beam(a, wc.λmax, distance)
+        min_thickness = HiSol.Focusing.window_thickness_breaking(
+            max(pressure-1, 1), aperture, wc.elastic_limit; S_break=wc.S_break
+        )
+        if wc.thickness < min_thickness
+            error("Fixed thickness $(1e3wc.thickness) is insufficient for pressure ($pressure bar)")
+        end
+    elseif isnothing(wc.thickness)
+        # aperture is fixed
+        p = HiSol.Focusing.window_thickness_distance(
+            a, pressure, τfwhm, energy, wc.λ0, wc.λmax, wc.aperture;
+            Bmax=wc.Bmax, material=wc.n2,
+            aperture_factor=wc.aperture_factor,
+            round_thickness=wc.round_thickness,
+            S_break=wc.S_break,
+            elastic_limit=wc.elastic_limit
+        )
+        distance = p.minimum_distance
+    end
+    max(distance, dLIDT)
 end
 
 
