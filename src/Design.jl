@@ -543,16 +543,16 @@ end
 
 function WindowConstraint(λref, n2;
                           λmax=λref, Bmax=0.2, thickness=nothing, round_thickness=false,
-                          aperture=8e-3, aperture_factor=2,
+                          aperture=nothing, aperture_factor=2,
                           round_aperture=false,
                           LIDT=nothing, S_fluence=5,
                           conversion=1,
                           elastic_limit=nothing, S_break=4,
                           τfwhm=nothing)
     WindowConstraint(λref, λmax, n2, Bmax, thickness, round_thickness,
-                     aperture, aperture_factor, round_aperture,
-                     LIDT, S_fluence,
-                     conversion, def_el(elastic_limit, n2), S_break,
+                     aperture, float(aperture_factor), round_aperture,
+                     LIDT, float(S_fluence),
+                     float(conversion), def_el(elastic_limit, n2), float(S_break),
                      τfwhm)
 end
 
@@ -564,7 +564,7 @@ def_el(el, n2) = el # if elastic limit is given directly, use that
 function (wc::WindowConstraint)(a, energy, τfwhm; pressure)
     energy *= wc.conversion
     τfwhm = isnothing(wc.τfwhm) ? τfwhm : wc.τfwhm
-    dLIDT = isnothing(w.LIDT) ? 0 : HiSol.Focusing.mirror_distance(
+    dLIDT = isnothing(wc.LIDT) ? 0 : HiSol.Focusing.mirror_distance(
         a, wc.λref, energy, wc.LIDT; S_fluence=wc.S_fluence
     )
     if isnothing(wc.aperture) && isnothing(wc.thickness)
@@ -591,7 +591,7 @@ function (wc::WindowConstraint)(a, energy, τfwhm; pressure)
     elseif isnothing(wc.thickness)
         # aperture is fixed
         p = HiSol.Focusing.window_thickness_distance(
-            a, pressure, τfwhm, energy, wc.λ0, wc.λmax, wc.aperture;
+            a, pressure, τfwhm, energy, wc.λref, wc.λmax, wc.aperture;
             Bmax=wc.Bmax, material=wc.n2,
             aperture_factor=wc.aperture_factor,
             round_thickness=wc.round_thickness,
