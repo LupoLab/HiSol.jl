@@ -305,12 +305,42 @@ needround(r::Bool) = r
 rounding(r::Number) = r
 rounding(r::Bool) = 1
 
-function window_thickness_distance_variable(a, pressure, τfwhm, energy, λ0, λmax;
-                                   Bmax=0.2, n2=:SiO2,
-                                   elastic_limit=:SiO2, S_break=4,
-                                   aperture_factor=2,
-                                   round_thickness=false, round_aperture=false,
-                                   shape=:sech)
+"""
+    window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λmax; kwargs...)
+
+Find the window distance, thickness and aperture radius which satisfy both the nonlinearity constraint
+and the pressure constraint with the shortest distance, thinnest window and smallest aperture possible.
+
+# Arguments: 
+- `a`: core radius
+- `pressure`: gas pressure in bar
+- `τfwhm`: pulse duration FWHM
+- `energy`: pulse energy
+- `λ0`: reference wavelength (for nonlinearity calculation)
+- `λmax`: longest wavelength which needs to pass through the window unobstructed
+
+# Keyword arguments:
+- `Bmax`: maximum B-integral (default: 0.2)
+- `n2`: nonlinear ref. index of the window, can be `Symbol` (material) or `Number` (n2)
+    (default: :SiO2)
+- `elastic_limit`: elastic limit of the window, can be `Symbol` (material) or `Number` (limit in Pascal)
+    (default: :SiO2)
+- `S_break`: safety factor for pressure tolerance calculation (default: 4)
+- `aperture_factor`: multiple of 1/e² radius which determines the aperture radius (default: 2)
+- `round_thickness`: whether to round the thickness to a nearest round value.
+    Can be `true` (round to nearest mm), `false` (do not round)
+    or `x::Number` (round to the nearest x mm, e.g. `x=0.5` to round to nearest half mm)
+    (default: `false`)
+- `round_aperture`: like `round_thickness`, but for aperture radius (default: `false`)
+- `shape`: pulse shape to assume in calculating the peak power. can be :gauss or :sech
+    (default: `sech`)
+"""
+function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λmax;
+                                            Bmax=0.2, n2=:SiO2,
+                                            elastic_limit=:SiO2, S_break=4,
+                                            aperture_factor=2,
+                                            round_thickness=false, round_aperture=false,
+                                            shape=:sech)
     ΔP = max(pressure-1, 1) # make sure we can handle vacuum
 
     tNL0 = window_thickness_nonlinear(a, λ0, energy, τfwhm, 0; material=n2, Bmax, shape)
