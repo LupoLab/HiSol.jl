@@ -504,6 +504,8 @@ struct FixedConstraint <: LengthConstraint
     windidst::Float64 # fixed distance from fibre
 end
 
+FixedConstraint(windist) = FixedConstraint(float(windist))
+
 (fc::FixedConstraint)(a, energy, τfwhm, pressure=nothing) = fc.windist
 
 struct NoConstraint <: LengthConstraint end
@@ -516,7 +518,7 @@ struct DamageConstraint <: LengthConstraint
     S_fluence::Float64
 end
 
-DamageConstraint(λref, LIDT; S_fluence=5) = DamageConstraint(λref, LIDT, S_fluence)
+DamageConstraint(λref, LIDT; S_fluence=5) = DamageConstraint(float(λref), float(LIDT), float(S_fluence))
 
 function (dc::DamageConstraint)(a, energy, τfwhm; pressure=nothing)
     Focusing.mirror_distance(a, dc.λref, energy, dc.LIDT; S_fluence=dc.S_fluence)
