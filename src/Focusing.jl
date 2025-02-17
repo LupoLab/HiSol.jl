@@ -304,7 +304,7 @@ needround(r::Number) = true
 needround(r::Bool) = r
 
 rounding(r::Number) = r
-rounding(r::Bool) = 1
+rounding(r::Bool) = 1e-3
 
 """
     window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λmax; kwargs...)
