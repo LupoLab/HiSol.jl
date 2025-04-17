@@ -504,7 +504,7 @@ struct FixedConstraint <: LengthConstraint
     windidst::Float64 # fixed distance from fibre
 end
 
-FixedConstraint(windist) = FixedConstraint(float(windist))
+FixedConstraint(windist::Integer) = FixedConstraint(float(windist))
 
 (fc::FixedConstraint)(a, energy, τfwhm, pressure=nothing) = fc.windist
 
