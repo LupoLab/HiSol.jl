@@ -506,11 +506,11 @@ end
 
 FixedConstraint(windist::Integer) = FixedConstraint(float(windist))
 
-(fc::FixedConstraint)(a, energy, τfwhm, pressure=nothing) = fc.windist
+(fc::FixedConstraint)(a, energy, τfwhm; pressure=nothing) = fc.windist
 
 struct NoConstraint <: LengthConstraint end
 
-(nc::NoConstraint)(a, energy, τfwhm, pressure=nothing) = 0
+(nc::NoConstraint)(a, energy, τfwhm; pressure=nothing) = 0
 
 struct DamageConstraint <: LengthConstraint
     λref::Float64
