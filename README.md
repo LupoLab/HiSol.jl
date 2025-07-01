@@ -1,16 +1,10 @@
-# HiSol
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://LupoLab.github.io/HiSol.jl/stable/)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://LupoLab.github.io/HiSol.jl/dev/)
-[![Build Status](https://github.com/LupoLab/HiSol.jl/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/LupoLab/HiSol.jl/actions/workflows/CI.yml?query=branch%3Amaster)
+> [!WARNING]
+> This package is a work in progress. Please use with caution and contribute corrections or improvements if possible.
 
 HiSol.jl is a Julia package to aid in the design of gas-filled hollow-core fibre systems for pulse compression and soliton dynamics using ultrashort laser pulses.
 
-To install, use `]add` in Julia with the GitHub repository:
+---
 
-```
-]add https://github.com/LupoLab/HiSol.jl
-```
+*This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
 
-> **Warning**
-> The HiSol.jl package is a **work in progress**, and as such the package and this repository are subject to drastic changes and/or removal without notice. Use at your own risk!
