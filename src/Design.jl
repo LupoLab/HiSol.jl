@@ -67,7 +67,7 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
                             thickness=1e-3, material=:SiO2, Bmax=0.2,
                             entrance_window=true, exit_window=true,
                             LIDT=2000, S_fluence=5,
-                            S_sf=5, S_ion=10, S_fiss=1.5, Nplot=512, kwargs...)
+                            S_sf=5, S_ion=10, S_fiss=1.5, Nplot=512, log_e=false, log_a=false, kwargs...)
     _, f = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                             thickness, material, Bmax,
                             entrance_window, exit_window,
@@ -85,8 +85,17 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
                     S_sf, S_ion, S_fiss, thickness, material, Bmax,
                     entrance_window, exit_window, LIDT, S_fluence, kwargs...)
 
-    a = collect(range(0.9amin, 1.5amax, Nplot))
-    energy = collect(range(0.9emin, 1.1emax, Nplot))
+    if log_e
+        energy = 10 .^ collect(range(log10(0.5emin), log10(1.1emax), Nplot))
+    else
+        energy = collect(range(0.1emin, 1.1emax, Nplot))
+    end
+    
+    if log_a
+        a = 10 .^ collect(range(log10(0.9amin), log10(1.3amax), Nplot))
+    else
+        a = collect(range(0.9amin, 1.3amax, Nplot))
+    end
 
     p = mapreduce(hcat, a) do ai
         fa = f(ai)
@@ -203,13 +212,13 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                         thickness=1e-3, material=:SiO2, Bmax=0.2,
                         entrance_window=true, exit_window=true,
                         LIDT=2000, S_fluence=5,
-                        S_sf=5, S_ion=10, S_fiss=1.5, Nplot=512, kwargs...)
+                        S_sf=5, S_ion=10, S_fiss=1.5, Nplot=512, log_e=false, log_a=false, kwargs...)
     a, energy, ratios, params, idcs, f = maxlength_limitratios(
         λ_target, gas, λ0, τfwhm, maxlength;
         thickness, material, Bmax,
         entrance_window, exit_window,
         LIDT, S_fluence,
-        S_sf, S_ion, S_fiss, Nplot, kwargs...)
+        S_sf, S_ion, S_fiss, Nplot, log_e, log_a, kwargs...)
 
     ab, energyb, full, cropped = boundaries(
         λ_target, gas, λ0, τfwhm, maxlength;
