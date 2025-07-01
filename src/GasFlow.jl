@@ -47,6 +47,22 @@ function tube_PVflow(a, flength, gas, P1, P2=0)
     return tube_conductance(a, flength, gas, P1, P2)*(Pmax - Pmin)
 end
 
+
+"""
+    gradient_end_pressure(a, flength, gas, Pmax, pump_speed)
+
+Compute the end pressure by iteratively solving for p2 such that the tube PV flow minus the pressure loss due to the pump equals zero.
+    
+# Arguments
+- a: HCF radius.
+- flength: length of the fibre.
+- gas: gas species (e.g. :He, :Ar).
+- Pmax: pressure on the high-pressure side of the fibre in Pascal.
+- pump_speed: either a constant pump speed in m³/s or a function that takes the pressure in Pascal and returns the pump speed at that pressure.
+
+# Returns
+- The ultimate end pressure in Pascal.
+"""
 function gradient_end_pressure(a, flength, gas, Pmax, pump_speed)
     # Pmax has to be SI units (Pascal)!
     find_zero(1e-3) do p2
