@@ -47,21 +47,14 @@ function tube_PVflow(a, flength, gas, P1, P2=0)
     return tube_conductance(a, flength, gas, P1, P2)*(Pmax - Pmin)
 end
 
-
 """
     gradient_end_pressure(a, flength, gas, Pmax, pump_speed)
 
-Compute the end pressure by iteratively solving for p2 such that the tube PV flow minus the pressure loss due to the pump equals zero.
-    
-# Arguments
-- a: HCF radius.
-- flength: length of the fibre.
-- gas: gas species (e.g. :He, :Ar).
-- Pmax: pressure on the high-pressure side of the fibre in Pascal.
-- pump_speed: either a constant pump speed in m³/s or a function that takes the pressure in Pascal and returns the pump speed at that pressure.
-
-# Returns
-- The ultimate end pressure in Pascal.
+Calculate the pressure at the low-pressure end of a pressure-gradient HCF
+with core radius `a` and length `flength` when filled with `gas` at a
+high-pressure-side pressure of `Pmax` (in SI units, i.e. Pascal). `pump_speed`
+can be a `Number` (constant pump speed in m³/s) or a function which
+takes the pressure in Pascal and returns the pump speed in m³/s.
 """
 function gradient_end_pressure(a, flength, gas, Pmax, pump_speed)
     # Pmax has to be SI units (Pascal)!
@@ -74,8 +67,27 @@ function gradient_end_pressure(a, flength, gas, Pmax, pump_speed::Number)
     gradient_end_pressure(a, flength, gas, Pmax, p -> pump_speed)
 end
 
+"""
+    Pascal_to_mbar(P_Pascal)
+
+Unit conversion from Pascal to millibar
+"""
 Pascal_to_mbar(P_Pascal) = P_Pascal/100
+
+"""
+    slpm(qpv)
+
+Convert the pressure-volume flow `qpv` from SI units (m³×Pa/s) to 
+standard litres per minute (SLPM)
+"""
 slpm(qpv) = qpv/atm * 1000 * 60
+
+"""
+    mbarlps(qpv)
+
+Convert the pressure-volume flow `qpv` from SI units (m³×Pa/s) to 
+millibar-litres per second (mbar×l/s)
+"""
 mbarlps(qpv) = qpv / bar * 1000 * 1000
 
 function choked_pressure(a, flength, gas, Pmax)
