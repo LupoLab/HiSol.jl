@@ -7,7 +7,7 @@
 **HiSol.jl** is a Julia package to aid in the design of gas-filled hollow-core fibre systems for pulse compression and soliton dynamics using ultrashort laser pulses. It does this by implementing a collection of design rules developed in the [Laboratory of Ultrafast Physics and Optics](https://lupo-lab.com).
 
 ## Installation
-HiSol.jl is not yet a registered Julia package. You therefore need to nstall it directly from GitHub, using the following commands in the Julia REPL:
+HiSol.jl is not yet a registered Julia package. You therefore need to install it directly from GitHub, using the following commands in the Julia REPL:
 ```julia
 ] add https://github.com/LupoLab/HiSol.jl
 ```
@@ -40,8 +40,6 @@ gas = :He # helium gas
 maxlength = 5 # 5 m maximum setup length
 
 figs, params, a, energy, ratios = design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength)
-figs[1].savefig(joinpath(dir, "readme_ex_1a.svg"))
-figs[2].savefig(joinpath(dir, "readme_ex_1b.svg"))
 ````
 
 ````
@@ -49,9 +47,9 @@ sys:1: UserWarning: No contour levels were found within the data range.
 
 ````
 
-This will produce the following plots (the `Figure` objects returned in the `figs` variable above.)
-![Filtered FROG trace](examples/readme/figures/readme_ex_1a.svg)
-![Filtered FROG trace](examples/readme/figures/readme_ex_1b.svg)
+This will produce the following plots (the `Figure` objects are returned in the `figs` variable above.)
+![<img src="examples/readme/figures/readme_ex_1a.svg" height="200" />](examples/readme/figures/readme_ex_1a.svg)
+![<img src="examples/readme/figures/readme_ex_1b.svg" height="200" />](examples/readme/figures/readme_ex_1b.svg)
 
 ---
 
