@@ -45,6 +45,10 @@ figs, params, as, energies, ratios = design_space_a_energy(λ_target, gas, λ0, 
 ````
 
 ````
+Precompiling HiSol...
+  38589.0 ms  ✓ Luna
+   9693.5 ms  ✓ HiSol
+  2 dependencies successfully precompiled in 51 seconds. 260 already precompiled.
 sys:1: UserWarning: No contour levels were found within the data range.
 
 ````
@@ -115,7 +119,7 @@ p.Lfiss
 The `design_space_a_energy` function takes a large range of additional keyword arguments which affect the design rules it applies. The two main categories concern a) safety factors for the nonlinear dynamics themselves b) limitations on the maximum HCF length in the given space (`maxlength`).
 
 ### Safety factors
-The three main keyword arguments which affect the "safety margin" in the calculations are:
+The three main keyword arguments which affect the "safety margin" in the calculations control safety factors. For each safety factor, a *larger* number implies a *more conservative* rule, which implies a smaller design space.
 - `S_sf`: safety factor on the critical power for self-focusing. The driving-pulse peak power will not exceed $P_\mathrm{crit}/S_\mathrm{sf}$. (Default: 5)
 - `S_ion`: safety factor on strong-field photoionisation. The driving-pulse intensity (in the mode-averaged sense, i.e. $P_0/A_\mathrm{eff}$) will not exceed $I_\mathrm{supp}/S_\mathrm{ion}$, where $I_\mathrm{supp}$ is the barrier suppression intensity of the gas. (Default: 10)
 - `S_fiss`: safety factor on the fission length. The *minimum* fibre length for efficient RDW emission is taken to be $S_\mathrm{fiss}L_\mathrm{fiss}$, where $L_\mathrm{fiss}$ is the fission length. (Default: 1.5)
@@ -124,7 +128,15 @@ The three main keyword arguments which affect the "safety margin" in the calcula
 
 - `S_loss`: safety factor on the loss length. The fission length (multiplied by the safety factor) will be shorter than $L_\mathrm{loss}/S_\mathrm{loss}$. (Default: 1)
 
+Note that `S_loss` follows the same convention as the other safety factors: a larger value results in a more conservative design rule.
+
 The default safety factors are intentionally very conservative, with the aim of generating parameter combinations which are very likely to work in practice. In extreme cases, it can be necessary to adjust the safety factors. For example, RDW emission at very short wavelengths is commonly ionisation-limited. To achieve efficient frequency conversion, the conservative limit can be exceeded by several times&mdash;at the cost of relying on more extreme nonlinear dynamics which can be more sensitive to minor perturbations. Similarly, the loss limit can be exceeded (see e.g. Chen *et al.*, 10.1364/OL.553345) at the cost of a potentially significant reduction in conversion efficiency to the RDW.
+
+### Maximum HCF length
+> [!NOTE]
+> This part of HiSol.jl is currently being re-developed to be more flexible. The API will change in the near future.
+
+Because capillary fibres need to be kept perfectly straight, the maximum HCF length is determined by the available straight length of optical table. In most cases, space is required on both sides of the HCF to allow the incoming/outgoing beam to converge/diverge without being detrimentally affected by nonlinearities (in windows) or damaging the steering and focusing optics.
 
 ---
 

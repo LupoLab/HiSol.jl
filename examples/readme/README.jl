@@ -110,4 +110,18 @@ The three main keyword arguments which affect the "safety margin" in the calcula
 Note that `S_loss` follows the same convention as the other safety factors: a larger value results in a more conservative design rule.
 
 The default safety factors are intentionally very conservative, with the aim of generating parameter combinations which are very likely to work in practice. In extreme cases, it can be necessary to adjust the safety factors. For example, RDW emission at very short wavelengths is commonly ionisation-limited. To achieve efficient frequency conversion, the conservative limit can be exceeded by several times&mdash;at the cost of relying on more extreme nonlinear dynamics which can be more sensitive to minor perturbations. Similarly, the loss limit can be exceeded (see e.g. Chen *et al.*, 10.1364/OL.553345) at the cost of a potentially significant reduction in conversion efficiency to the RDW. 
+
+### Maximum HCF length
+> [!NOTE]
+> This part of HiSol.jl is currently being re-developed to be more flexible. The API will change in the near future.
+
+Because capillary fibres need to be kept perfectly straight, the maximum HCF length is determined by the available straight length of optical table. In most cases, space is required on both sides of the HCF to allow the incoming/outgoing beam to converge/diverge without being detrimentally affected by nonlinearities (in windows) or damaging the steering and focusing optics. Several keywords are available to tailor these length constraints to your requirements:
+
+- `entrance_window`: whether a window is present at the entrance of the HCF. If `false`, the damage threshold of a mirror is taken into account (see below) instead of a nonlinearity limit in a window. (Default: `true`)
+- `exit_window`: same as above, but for the exit side of the HCF. (Default: `true`)
+- `thickness`: thickness of the window(s). (Default: `1e-3`, i.e. 1 mm)
+- `material`: material of the window(s). (Default: `SiO2`, i.e. fused silica. Other options include `MgF2`.)
+- `Bmax`: maximum B-integral in the window. (Default: 0.2, see 10.1364/OE.482749)
+- `LIDT`: damage treshold of the last mirror before/first mirror after the HCF **in SI units**, i.e. J/m². (Default: 2000, i.e. 0.2 J/cm²)
+- `S_fluence`: safety factor on the mirror fluence. The maximum fluence is the LIDT divided by `S_fluence`. (Default: 5)
 =#
