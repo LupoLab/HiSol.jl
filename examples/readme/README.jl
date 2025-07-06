@@ -125,5 +125,5 @@ Because capillary fibres need to be kept perfectly straight, the maximum HCF len
 - `LIDT`: damage treshold of the last mirror before/first mirror after the HCF **in SI units**, i.e. J/m². (Default: 2000, i.e. 0.2 J/cm²)
 - `S_fluence`: safety factor on the mirror fluence. The maximum fluence is the LIDT divided by `S_fluence`. (Default: 5)
 
-Again, the defaults are conservative limits with the aim of producing unproblematic parameter combinations. Note that it is currently not possible to define separate thicknesses/materials/damage thresholds for the entrance and exit sides; this is under development as part of a larger refactor. 
+Again, the defaults are conservative limits with the aim of producing working parameter combinations. Note that it is currently not possible to define separate thicknesses/materials/damage thresholds for the entrance and exit sides; this is under development as part of a larger refactor. 
 =#
