@@ -67,7 +67,7 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
                             thickness=1e-3, material=:SiO2, Bmax=0.2,
                             entrance_window=true, exit_window=true,
                             LIDT=2000, S_fluence=5,
-                            S_sf=5, S_ion=10, S_fiss=1.5, Nplot=512, kwargs...)
+                            S_sf=5, S_ion=10, S_fiss=1.5, S_loss=1, Nplot=512, kwargs...)
     _, f = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                             thickness, material, Bmax,
                             entrance_window, exit_window,
@@ -99,8 +99,8 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
     flength = getindex.(p, :flength)
     Lfiss = getindex.(p, :Lfiss)
 
-    loss_ratio = (S_fiss .* Lfiss) ./ Lloss
-    fiss_ratio = (S_fiss .* Lfiss) ./flength
+    loss_ratio = (S_fiss .* Lfiss) ./ (Lloss/S_loss)
+    fiss_ratio = (S_fiss .* Lfiss) ./ flength
 
     N = getindex.(p, :N)
     Nmax = getindex.(p, :Nmax)
@@ -203,13 +203,13 @@ function design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength;
                         thickness=1e-3, material=:SiO2, Bmax=0.2,
                         entrance_window=true, exit_window=true,
                         LIDT=2000, S_fluence=5,
-                        S_sf=5, S_ion=10, S_fiss=1.5, Nplot=512, kwargs...)
+                        S_sf=5, S_ion=10, S_fiss=1.5, S_loss=1, Nplot=512, kwargs...)
     a, energy, ratios, params, idcs, f = maxlength_limitratios(
         λ_target, gas, λ0, τfwhm, maxlength;
         thickness, material, Bmax,
         entrance_window, exit_window,
         LIDT, S_fluence,
-        S_sf, S_ion, S_fiss, Nplot, kwargs...)
+        S_sf, S_ion, S_fiss, S_loss, Nplot, kwargs...)
 
     ab, energyb, full, cropped = boundaries(
         λ_target, gas, λ0, τfwhm, maxlength;

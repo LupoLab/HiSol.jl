@@ -87,9 +87,44 @@ Here `p` is now a `NamedTuple` containing the parameters. Its fields are:
 - `Nmin`: minimum soliton order.
 - `Nmax`: maximum soliton order.
 - `Lloss`: loss length of the HCF.
-- `intensity`: peak intensity of the driving pulse (W/m²).
 - `Isupp`: barrier suppression intensity of the filling gas.
 - `Icrit`: critical intensity for self-focusing, calculated as $I_\mathrm{crit} = P_\mathrm{crit}/A_\mathrm{eff}$, where $P_\mathrm{crit}$ is the critical *power* and $A_\mathrm{eff}$ is the effective area of the waveguide.
+- `intensity`: peak intensity of the driving pulse (W/m²), calculated as $P_0/A_\mathrm{eff}$ where $P_0$ is the pulse peak power.
+
+To find, for example, the gas pressure for one point in the design space, we can access the respective field:
+
+````julia
+p.pressure
+````
+
+````
+0.7253185622214363
+````
+
+Or, similarly, the fission length:
+
+````julia
+p.Lfiss
+````
+
+````
+1.6345326571134293
+````
+
+## Additional options
+The `design_space_a_energy` function takes a large range of additional keyword arguments which affect the design rules it applies. The two main categories concern a) safety factors for the nonlinear dynamics themselves b) limitations on the maximum HCF length in the given space (`maxlength`).
+
+### Safety factors
+The three main keyword arguments which affect the "safety margin" in the calculations are:
+- `S_sf`: safety factor on the critical power for self-focusing. The driving-pulse peak power will not exceed $P_\mathrm{crit}/S_\mathrm{sf}$. (Default: 5)
+- `S_ion`: safety factor on strong-field photoionisation. The driving-pulse intensity (in the mode-averaged sense, i.e. $P_0/A_\mathrm{eff}$) will not exceed $I_\mathrm{supp}/S_\mathrm{ion}$, where $I_\mathrm{supp}$ is the barrier suppression intensity of the gas. (Default: 10)
+- `S_fiss`: safety factor on the fission length. The *minimum* fibre length for efficient RDW emission is taken to be $S_\mathrm{fiss}L_\mathrm{fiss}$, where $L_\mathrm{fiss}$ is the fission length. (Default: 1.5)
+
+`S_fiss` affects both the loss cut-off and the length cut-off: for a parameter combination to be included in the design space, $S_\mathrm{fiss}\times L_\mathrm{fiss}$ needs to be shorter than both the maximum HCF length *and* the loss length. A fourth keyword argument can alter that behaviour:
+
+- `S_loss`: safety factor on the loss length. The fission length (multiplied by the safety factor) will be shorter than $L_\mathrm{loss}/S_\mathrm{loss}$. (Default: 1)
+
+The default safety factors are intentionally very conservative, with the aim of generating parameter combinations which are very likely to work in practice. In extreme cases, it can be necessary to adjust the safety factors. For example, RDW emission at very short wavelengths is commonly ionisation-limited. To achieve efficient frequency conversion, the conservative limit can be exceeded by several times&mdash;at the cost of relying on more extreme nonlinear dynamics which can be more sensitive to minor perturbations. Similarly, the loss limit can be exceeded (see e.g. Chen *et al.*, 10.1364/OL.553345) at the cost of a potentially significant reduction in conversion efficiency to the RDW.
 
 ---
 
