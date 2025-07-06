@@ -2,6 +2,7 @@ module Design
 import PyPlot: plt
 import Polynomials: Polynomial, roots
 import Luna: PhysData
+import Luna.PhysData: wlfreq
 import Luna.Plotting: cmap_colours
 using HiSol
 import HiSol.Solitons: Δβwg, Δβρ, T0P0, fission_length, N, RDW_to_ZDW, τfwhm_to_T0, N_to_energy, dispersion_length, nonlinear_length, density_area_product
@@ -9,6 +10,101 @@ import HiSol.Limits: critical_intensity, barrier_suppression_intensity, Nmin, Nm
 import HiSol.HCF: intensity_modeavg, loss_length, ZDW, αbar_a, δ, fβ2, get_unm, Aeff0, dispersion, Δ
 import HiSol.Focusing: max_flength
 import HiSol.Data: n2_0, n2_solid
+
+struct Params{icT, ocT}
+    λ_target::Float64
+    λ0::Float64
+    gas::Symbol
+    maxlength::Float64
+    incon::icT # length constraint on input side
+    outcon::ocT # length constraint on output side
+    ρasq::Float64 # density-area product
+    Icrit::Float64 # critical intensity for self-focusing
+    Isupp::Float64 # barrier suppression intensity
+    δ::Float64 # dispersion parameter
+    zdw::Float64 # zero-dispersion wavelength
+    A0::Float64 # effective-area scaling
+    mode::Tuple{Symbol, Int64, Int64} # mode definition: (kind, n, m)
+    n20::Float64 # density-scaled nonlinear refractive index
+    αbar::Float64 # core-radius-scaled attenuation coefficient
+    S_ion::Float64 # safety factor on ionisation
+    S_sf::Float64 # safety factor on self-focusing
+    S_fiss::Float64 # safety factor on fission length
+    S_loss::Float64 # safety factor on loss
+end
+
+function Params(λ_target, gas, λ0, maxlength;
+                input_constraint, output_constraint,
+                S_ion=10, S_sf=5, S_fiss=1.5, S_loss=1, kwargs...)
+    ρasq = Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0; kwargs...)
+
+    Icrit = critical_intensity(λ_target, gas, λ0; kwargs...)
+    Isupp = barrier_suppression_intensity(gas)
+    A0 = Aeff0(;kwargs...)
+    n20 = n2_0(gas)
+    αbar = αbar_a(λ0; kwargs...)
+    zdw = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
+
+    δ_ = δ(gas, λ0, zdw; kwargs...)
+    kwd = Dict(kwargs)
+    mode = (getkey(kwd, :kind, :HE), getkey(kwd, :n, 1), getkey(kwd, :m, 1))
+
+    Params(
+        float(λ_target), float(λ0), gas, float(maxlength), input_constraint, output_constraint,
+        ρasq, Icrit, Isupp, δ_, zdw, A0, mode, n20, αbar,
+        float(S_ion), float(S_sf), float(S_fiss), float(S_loss)
+    )
+end
+
+function (p::Params)(a, energy, τfwhm)
+    density = p.ρasq/a^2
+    pressure = PhysData.pressure(p.gas, density)
+    Lloss = a^3/p.αbar
+    aeff = p.A0*a^2
+    n2 = p.n20 * density
+    γ = wlfreq(p.λ0)/PhysData.c*n2/aeff
+    β2 = p.δ/a^2
+
+    T0, P0 = T0P0(τfwhm, energy)
+    intensity = P0/aeff
+
+    entrance_length = p.incon(a, energy, τfwhm; pressure)
+    exit_length = p.outcon(a, energy, τfwhm; pressure)
+    flength = p.maxlength - entrance_length - exit_length
+
+    Ld = dispersion_length(T0, β2)
+    Lnl = nonlinear_length(P0, γ)
+    Lfiss = sqrt(Ld*Lnl)
+    Nsol = sqrt(Ld/Lnl)
+    Nma = Nmax(p.zdw, p.gas, p.λ0, τfwhm; p.S_ion, p.S_sf)
+    Nmi = Nmin(p.λ_target, p.λ0, τfwhm)
+    (;radius=a, density, pressure, intensity, flength, energy, τfwhm, 
+      N=Nsol, Nmin=Nmi, Nmax=Nma, Lfiss, Lloss, Isupp=p.Isupp, Icrit=p.Icrit)
+end
+
+
+struct RadiusParams{pT}
+    p::pT # general Params
+    a::Float64 # core radius
+    density::Float64 # gas density
+    pressure::Float64 # gas pressure
+    Lloss::Float64 # loss length
+    aeff::Float64 # effective area
+    n2::Float64 # nonlinear refractive index
+    γ::Float64 # nonlinear coefficient
+    β2::Float64 # GVD
+end
+
+function RadiusParams(a, p::Params)
+    density = p.ρasq/a^2
+    pressure = PhysData.pressure(p.gas, density)
+    Lloss = a^3/p.αbar
+    aeff = p.A0*a^2
+    n2 = p.n20 * density
+    γ = wlfreq(p.λ0)/PhysData.c*n2/aeff
+    β2 = p.δ/a^2
+    RadiusParams(p, a, density, pressure, Lloss, aeff, n2, γ, β2)
+end
 
 function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                         thickness=1e-3, material=:SiO2, Bmax=0.2,
@@ -64,26 +160,17 @@ function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
 end
 
 function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
-                            thickness=1e-3, material=:SiO2, Bmax=0.2,
-                            entrance_window=true, exit_window=true,
-                            LIDT=2000, S_fluence=5,
-                            S_sf=5, S_ion=10, S_fiss=1.5, Nplot=512, log_e=false, log_a=false, kwargs...)
-    _, f = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
-                            thickness, material, Bmax,
-                            entrance_window, exit_window,
-                            LIDT, S_fluence,
-                            S_ion, S_sf, kwargs...)
+                               S_sf=5, S_ion=10, S_loss=1, S_fiss=1.5,
+                               Nplot=512, log_e=false, log_a=false, 
+                               kwargs...)
 
-    fae, f = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
-                        thickness, material, Bmax,
-                        entrance_window, exit_window,
-                        LIDT, S_fluence,
-                        S_ion, S_sf, kwargs...)
+    params = Params(λ_target, gas, λ0, maxlength; kwargs...)
         
-    emin, amin = min_energy(λ_target, λ0, gas, τfwhm; S_sf, S_ion, S_loss=1, kwargs...)
+    emin, amin = min_energy(λ_target, λ0, gas, τfwhm;
+                            S_sf, S_ion, S_loss)
     emax, amax = max_energy(λ_target, λ0, gas, τfwhm, maxlength;
-                    S_sf, S_ion, S_fiss, thickness, material, Bmax,
-                    entrance_window, exit_window, LIDT, S_fluence, kwargs...)
+                    S_sf, S_ion, S_fiss, thickness=1e-3, material=:SiO2, Bmax=0.2,
+                    entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5)
 
     if log_e
         energy = 10 .^ collect(range(log10(0.5emin), log10(1.1emax), Nplot))
@@ -98,9 +185,8 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
     end
 
     p = mapreduce(hcat, a) do ai
-        fa = f(ai)
         map(energy) do ei
-            fa(ei)
+            params(ai, ei, τfwhm)
         end
     end
 
@@ -124,9 +210,9 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
 
     ratios = (loss=loss_ratio, fiss=fiss_ratio, Nmin=Nmin_ratio, Nmax=Nmax_ratio)
     idcs = (loss=loss_idcs, fiss=fiss_idcs, Nmin=min_idcs, Nmax=max_idcs, all=goodidcs)
-    params = (;Lfiss, Lloss, N, Nmax=getindex.(p, :Nmax)[1], Nmin=getindex.(p, :Nmin)[1])
+    paramst = (;Lfiss, Lloss, N, Nmax=getindex.(p, :Nmax)[1], Nmin=getindex.(p, :Nmin)[1])
 
-    a, energy, ratios, params, idcs, fae
+    a, energy, ratios, paramst, idcs, params
 end
 
 function boundaries(
@@ -209,23 +295,15 @@ function boundaries(
 end
 
 function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
-                        thickness=1e-3, material=:SiO2, Bmax=0.2,
-                        entrance_window=true, exit_window=true,
-                        LIDT=2000, S_fluence=5,
-                        S_sf=5, S_ion=10, S_fiss=1.5, Nplot=512, log_e=false, log_a=false, kwargs...)
+                         input_constraint, output_constraint,
+                         Nplot=512, log_e=false, log_a=false, kwargs...)
     a, energy, ratios, params, idcs, f = maxlength_limitratios(
         λ_target, gas, λ0, τfwhm, maxlength;
-        thickness, material, Bmax,
-        entrance_window, exit_window,
-        LIDT, S_fluence,
-        S_sf, S_ion, S_fiss, Nplot, log_e, log_a, kwargs...)
+        input_constraint, output_constraint,
+        Nplot, log_e, log_a, kwargs...)
 
     ab, energyb, full, cropped = boundaries(
         λ_target, gas, λ0, τfwhm, maxlength;
-        thickness, material, Bmax,
-        entrance_window, exit_window,
-        LIDT, S_fluence,
-        S_sf, S_ion, S_fiss, Nplot,
         kwargs...)
 
     patch = plt.Polygon(1e6cropped.vertices; closed=false,
@@ -597,7 +675,8 @@ function (wc::WindowConstraint)(a, energy, τfwhm; pressure)
             max(pressure-1, 1), aperture, wc.elastic_limit; S_break=wc.S_break
         )
         if wc.thickness < min_thickness
-            error("Fixed thickness $(1e3wc.thickness) is insufficient for pressure ($pressure bar)")
+            # error("Fixed thickness $(1e3wc.thickness) is insufficient for pressure ($pressure bar)")
+            distance = Inf
         end
     elseif isnothing(wc.thickness)
         # aperture is fixed
