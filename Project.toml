@@ -1,7 +1,7 @@
 name = "HiSol"
 uuid = "b3f70d9b-428d-48dd-a02b-de2d62b823ae"
 authors = ["Christian Brahms <c.brahms@hw.ac.uk>", "John Travers <j.travers@hw.ac.uk>"]
-version = "0.1.0"
+version = "0.2.0"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"

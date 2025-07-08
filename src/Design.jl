@@ -8,6 +8,7 @@ import HiSol.Limits: critical_intensity, barrier_suppression_intensity, Nmin, Nm
 import HiSol.HCF: intensity_modeavg, loss_length, ZDW, αbar_a, δ, fβ2, get_unm, Aeff0, dispersion, Δ
 import HiSol.Focusing: max_flength
 import HiSol.Data: n2_0, n2_solid
+import Logging: @warn
 
 function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                         thickness=1e-3, material=:SiO2, Bmax=0.2,
@@ -66,7 +67,7 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
                             thickness=1e-3, material=:SiO2, Bmax=0.2,
                             entrance_window=true, exit_window=true,
                             LIDT=2000, S_fluence=5,
-                            S_sf=5, S_ion=10, S_fiss=1.5, Nplot=512, kwargs...)
+                            S_sf=5, S_ion=10, S_fiss=1.5, S_loss=1, Nplot=512, kwargs...)
     _, f = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                             thickness, material, Bmax,
                             entrance_window, exit_window,
@@ -98,8 +99,8 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
     flength = getindex.(p, :flength)
     Lfiss = getindex.(p, :Lfiss)
 
-    loss_ratio = (S_fiss .* Lfiss) ./ Lloss
-    fiss_ratio = (S_fiss .* Lfiss) ./flength
+    loss_ratio = (S_fiss .* Lfiss) ./ (Lloss/S_loss)
+    fiss_ratio = (S_fiss .* Lfiss) ./ flength
 
     N = getindex.(p, :N)
     Nmax = getindex.(p, :Nmax)
@@ -198,17 +199,17 @@ function boundaries(
 
 end
 
-function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
+function design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength;
                         thickness=1e-3, material=:SiO2, Bmax=0.2,
                         entrance_window=true, exit_window=true,
                         LIDT=2000, S_fluence=5,
-                        S_sf=5, S_ion=10, S_fiss=1.5, Nplot=512, kwargs...)
+                        S_sf=5, S_ion=10, S_fiss=1.5, S_loss=1, Nplot=512, kwargs...)
     a, energy, ratios, params, idcs, f = maxlength_limitratios(
         λ_target, gas, λ0, τfwhm, maxlength;
         thickness, material, Bmax,
         entrance_window, exit_window,
         LIDT, S_fluence,
-        S_sf, S_ion, S_fiss, Nplot, kwargs...)
+        S_sf, S_ion, S_fiss, S_loss, Nplot, kwargs...)
 
     ab, energyb, full, cropped = boundaries(
         λ_target, gas, λ0, τfwhm, maxlength;
@@ -225,7 +226,7 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     fig = plt.figure()
     fig.set_size_inches(12, 3.5)
     plt.subplot(1, 4, 1)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.loss; cmap="Spectral_r")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.loss; cmap="Spectral_r", rasterized=true)
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.loss, 0; colors="0.4")
     plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
@@ -238,7 +239,7 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.ylim(extrema(1e6energy))
     plt.xlim(extrema(1e6a))
     plt.subplot(1, 4, 2)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.fiss; cmap="Spectral_r")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.fiss; cmap="Spectral_r", rasterized=true)
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.fiss, 0; colors="0.4")
     plt.plot(full.length*1e6, energyb*1e6, color="0.4")
@@ -248,7 +249,7 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.ylim(extrema(1e6energy))
     plt.xlim(extrema(1e6a))
     plt.subplot(1, 4, 3)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmin; cmap="Spectral_r")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmin; cmap="Spectral_r", rasterized=true)
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.Nmin, 0; colors="0.4")
     plt.plot(1e6ab, 1e6full.Nmin, color="0.4")
@@ -258,7 +259,7 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.ylim(extrema(1e6energy))
     plt.xlim(extrema(1e6a))
     plt.subplot(1, 4, 4)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmax; cmap="Spectral_r")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmax; cmap="Spectral_r", rasterized=true)
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.Nmax, 0; colors="0.4")
     plt.plot(1e6ab, 1e6full.Nmax, color="0.4")
@@ -270,30 +271,39 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     
     fig.tight_layout()
 
-    Lfiss_ok = params.Lfiss[idcs.all]
+    Lfiss_ok = copy(params.Lfiss)
+    Lfiss_ok[.~idcs.all] .= NaN
+
+    N_ok = copy(params.N)
+    N_ok[.~idcs.all] .= NaN
 
     fig2 = plt.figure()
-    fig2.set_size_inches(6, 3.5)
-    plt.subplot(1, 2, 1)
-    plt.pcolormesh(1e6a, 1e6energy, params.Lfiss)
-    plt.clim(0, 1.5*maximum(Lfiss_ok))
-    plt.contour(1e6a, 1e6energy, idcs.loss, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.fiss, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
-    plt.xlabel("Core radius (μm)")
-    plt.ylabel("Energy (μJ)")
-    # plt.colorbar()
-    # plt.colorbar(label="Fission length (m)")
-    plt.subplot(1, 2, 2)
-    plt.pcolormesh(1e6a, 1e6energy, params.N)
-    plt.clim(1, 1.5maximum(params.Nmax))
-    plt.contour(1e6a, 1e6energy, idcs.Nmax, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.Nmin, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
-    plt.xlabel("Core radius (μm)")
-    # plt.colorbar(label="Soliton order")
+    fig2.set_size_inches(8, 3.5)
+    gs = fig2.add_gridspec(1, 2)
+    gss = gs[1].subgridspec(1, 2; width_ratios=(1, 0.05), wspace=0.05)
+    ax = fig2.add_subplot(gss[1])
+    img = ax.pcolormesh(1e6a, 1e6energy, Lfiss_ok, rasterized=true)
+    ax.set_xlabel("Core radius (μm)")
+    ax.set_ylabel("Energy (μJ)")
+    ax.set_title("Fission length")
+    cax = fig2.add_subplot(gss[2])
+    fig2.colorbar(img; cax, label="Fission length (m)")
+    gss = gs[2].subgridspec(1, 2; width_ratios=(1, 0.05), wspace=0.05)
+    ax = fig2.add_subplot(gss[1])
+    img = ax.pcolormesh(1e6a, 1e6energy, N_ok, rasterized=true)
+    ax.set_xlabel("Core radius (μm)")
+    ax.set_ylabel("Energy (μJ)")
+    ax.set_title("Soliton order")
+    cax = fig2.add_subplot(gss[2])
+    fig2.colorbar(img; cax, label="Soliton order")
+    fig2.tight_layout()
 
-    fig, f, a, energy, ratios
+    (fig, fig2), f, a, energy, ratios
+end
+
+function aeplot_maxlength(args...; kwargs...)
+    @warn "aeplot_maxlength has been replace by design_space_a_energy and will be removed soon."
+    design_space_a_energy(args...; kwargs...)
 end
 
 function aplot_energy_maxlength(λ_target, gas, λ0, τfwhm, energy, maxlength;
