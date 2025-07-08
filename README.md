@@ -1,4 +1,3 @@
-
 > [!WARNING]
 > This package is a work in progress. Function signatures and internals are subject to change without notice. Please use with caution and contribute corrections or improvements if possible.
 
@@ -33,7 +32,7 @@ design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength)
 As an example, we will design the HCF system used in the first demonstration of RDW emission in a hollow capillary fibre [Travers et al., Nature Photonics 13, 547 (2019)]. First we need to load the package and define our fixed parameters and constraints, then we call the function.
 
 ````julia
-using HiSol;
+using HiSol
 
 λ_target = 160e-9 # 160 nm RDW
 gas = :He # helium gas
@@ -42,15 +41,6 @@ gas = :He # helium gas
 maxlength = 5 # 5 m maximum setup length
 
 figs, params, as, energies, ratios = design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength)
-````
-
-````
-Precompiling HiSol...
-  38589.0 ms  ✓ Luna
-   9693.5 ms  ✓ HiSol
-  2 dependencies successfully precompiled in 51 seconds. 260 already precompiled.
-sys:1: UserWarning: No contour levels were found within the data range.
-
 ````
 
 This will produce the following plots (the `Figure` objects are returned in the `figs` variable above.)
@@ -136,7 +126,17 @@ The default safety factors are intentionally very conservative, with the aim of 
 > [!NOTE]
 > This part of HiSol.jl is currently being re-developed to be more flexible. The API will change in the near future.
 
-Because capillary fibres need to be kept perfectly straight, the maximum HCF length is determined by the available straight length of optical table. In most cases, space is required on both sides of the HCF to allow the incoming/outgoing beam to converge/diverge without being detrimentally affected by nonlinearities (in windows) or damaging the steering and focusing optics.
+Because capillary fibres need to be kept perfectly straight, the maximum HCF length is determined by the available straight length of optical table. In most cases, space is required on both sides of the HCF to allow the incoming/outgoing beam to converge/diverge without being detrimentally affected by nonlinearities (in windows) or damaging the steering and focusing optics. Several keywords are available to tailor these length constraints to your requirements:
+
+- `entrance_window`: whether a window is present at the entrance of the HCF. If `false`, the damage threshold of a mirror is taken into account (see below) instead of a nonlinearity limit in a window. (Default: `true`)
+- `exit_window`: same as above, but for the exit side of the HCF. (Default: `true`)
+- `thickness`: thickness of the window(s). (Default: `1e-3`, i.e. 1 mm)
+- `material`: material of the window(s). (Default: `SiO2`, i.e. fused silica. Other options include `MgF2`.)
+- `Bmax`: maximum B-integral in the window. (Default: 0.2, see 10.1364/OE.482749)
+- `LIDT`: damage treshold of the last mirror before/first mirror after the HCF **in SI units**, i.e. J/m². (Default: 2000, i.e. 0.2 J/cm²)
+- `S_fluence`: safety factor on the mirror fluence. The maximum fluence is the LIDT divided by `S_fluence`. (Default: 5)
+
+Again, the defaults are conservative limits with the aim of producing working parameter combinations. Note that it is currently not possible to define separate thicknesses/materials/damage thresholds for the entrance and exit sides; this is under development as part of a larger refactor.
 
 ---
 

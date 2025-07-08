@@ -1,5 +1,8 @@
 import PyPlot: plt, pygui #hide
 pygui(false); #hide
+using HiSol; #hide
+figs, _ = design_space_a_energy(200e-9, :He, 800e-9, 10e-15, 10); #hide
+plt.close("all"); #hide
 
 # > [!WARNING]
 # > This package is a work in progress. Function signatures and internals are subject to change without notice. Please use with caution and contribute corrections or improvements if possible. 
@@ -37,7 +40,7 @@ design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength)
 
 As an example, we will design the HCF system used in the first demonstration of RDW emission in a hollow capillary fibre [Travers et al., Nature Photonics 13, 547 (2019)]. First we need to load the package and define our fixed parameters and constraints, then we call the function.
 =#
-using HiSol;
+using HiSol
 dir = joinpath(pkgdir(HiSol), "examples/readme/figures/") #hide
 
 λ_target = 160e-9 # 160 nm RDW
