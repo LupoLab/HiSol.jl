@@ -290,7 +290,7 @@ function window_thickness_distance(a, pressure, peakpower, λ0, λmax, aperture_
     pressure = max(pressure - 1.0, 1.0) # make sure can handle vacuum
     thickness = window_thickness_breaking(pressure, aperture_radius, elastic_limit; S_break)
     if needround(round_thickness)
-        rt = rounding(round_thickness)
+        rt = rounding(round_thickness)*1e-3
         thickness = ceil(thickness/rt)*rt
     end
     minimum_distance = window_distance(a, λ0, peakpower, thickness; material, Bmax)
@@ -304,7 +304,7 @@ needround(r::Number) = true
 needround(r::Bool) = r
 
 rounding(r::Number) = r
-rounding(r::Bool) = 1e-3
+rounding(r::Bool) = 1
 
 """
     window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λmax; kwargs...)
@@ -359,7 +359,7 @@ function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λ
 
     distance = dOpt
     thickness = window_thickness_nonlinear(a, λ0, energy, τfwhm, dOpt;
-                                           material=n2, shape)
+                                           material=n2, shape, Bmax)
     aperture = aperture_factor*diverged_beam(a, λmax, dOpt)
     if needround(round_thickness) && needround(round_aperture)
         rt = rounding(round_thickness) * 1e-3
@@ -374,7 +374,7 @@ function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λ
             thickness = ceil(max(tP, thickness)/rt)*rt
             # distance required from nonlinearity constraint for new thickness
             distance = window_distance(a, λ0, energy, τfwhm, thickness;
-                                       material=n2, shape)
+                                       material=n2, shape, Bmax)
             # aperture required for new distance
             min_aperture = aperture_factor*diverged_beam(a, λmax, distance)
             n += 1
@@ -394,7 +394,7 @@ function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λ
             thickness = ceil(thickness/rt)*rt
             # thicker window needs to be further away
             distance = window_distance(a, λ0, energy, τfwhm, thickness;
-                                    material=n2, shape)
+                                       material=n2, shape, Bmax)
             # need bigger aperture for larger distance
             aperture = aperture_factor*diverged_beam(a, λmax, distance)
             # thickness required for new aperture
@@ -418,7 +418,7 @@ function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λ
             thickness = window_thickness_breaking(ΔP, aperture, elastic_limit; S_break)
             # thicker window needs to be further away
             distance = window_distance(a, λ0, energy, τfwhm, thickness;
-                                       material=n2, shape)
+                                       material=n2, shape, Bmax)
             # aperture required for new distance
             min_aperture = aperture_factor*diverged_beam(a, λmax, distance)
             n += 1
@@ -435,7 +435,7 @@ function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λ
     # Double check that our numbers are correct
     # 1. Is the window thin enough at this distance to avoid excessive nonlinearity?
     max_thickness = window_thickness_nonlinear(a, λ0, energy, τfwhm, distance;
-                                               material=n2, shape)
+                                               material=n2, shape, Bmax)
     if thickness > max_thickness + eps(Float64) # allow for floating-point differences
         error("Found thickness $(1e3thickness) mm which is too thick (max $(1e3max_thickness))")
     end
