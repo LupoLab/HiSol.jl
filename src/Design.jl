@@ -16,7 +16,7 @@ function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                         entrance_window=true, exit_window=true,
                         S_ion=10, S_sf=5,
                         kwargs...)
-    ρasq = Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0; kwargs...)
+    ρasq = Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0)
 
     Icrit = critical_intensity(λ_target, gas, λ0; kwargs...)
     Isupp = barrier_suppression_intensity(gas)

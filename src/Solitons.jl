@@ -137,7 +137,7 @@ function Δβρ(λ_target, gas, λ0)
 end
 
 function density_area_product(λ_target, gas, λ0; kwargs...)
-    Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0; kwargs...)
+    Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0)
 end
 
 """
