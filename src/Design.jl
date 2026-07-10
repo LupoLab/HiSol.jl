@@ -25,21 +25,21 @@ function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     ω0 = PhysData.wlfreq(λ0)
 
     zdw = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
-    Nma = Nmax(zdw, gas, λ0, τfwhm; S_ion, S_sf)
+    Nma = Nmax(zdw, gas, λ0, τfwhm; S_ion, S_sf, kwargs...)
 
     δ_ = δ(gas, λ0, zdw; kwargs...)
 
     function params_energy(a)
         density = ρasq/a^2
         pressure = PhysData.pressure(gas, density)
-        
+
         Lloss = loss_length(a, λ0; kwargs...)
-        
+
         aeff = A0*a^2
         n2 = n20 * density
         γ = ω0/PhysData.c*n2/aeff
         β2 = δ_/a^2
-        
+
         function params(energy)
             T0, P0 = T0P0(τfwhm, energy)
             intensity = P0/aeff
@@ -68,18 +68,13 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
                             entrance_window=true, exit_window=true,
                             LIDT=2000, S_fluence=5,
                             S_sf=5, S_ion=10, S_fiss=1.5, S_loss=1, Nplot=512, kwargs...)
-    _, f = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
-                            thickness, material, Bmax,
-                            entrance_window, exit_window,
-                            LIDT, S_fluence,
-                            S_ion, S_sf, kwargs...)
 
     fae, f = params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                         thickness, material, Bmax,
                         entrance_window, exit_window,
                         LIDT, S_fluence,
                         S_ion, S_sf, kwargs...)
-        
+
     emin, amin = min_energy(λ_target, λ0, gas, τfwhm; S_sf, S_ion, S_loss=1, kwargs...)
     emax, amax = max_energy(λ_target, λ0, gas, τfwhm, maxlength;
                     S_sf, S_ion, S_fiss, thickness, material, Bmax,
@@ -268,7 +263,7 @@ function design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength;
     plt.title("Maximum soliton order")
     plt.ylim(extrema(1e6energy))
     plt.xlim(extrema(1e6a))
-    
+
     fig.tight_layout()
 
     Lfiss_ok = copy(params.Lfiss)
@@ -367,7 +362,7 @@ end
     min_energy(λ_target, λ0, gas, τfwhm; S_sf=5, S_ion=10, S_loss=1, kwargs...)
 
 Find the minimum energy and core size which can be used to drive RDW emission in HCF
-for an RDW target wavelength `λ_target`, pump wavelength `λ0`, fill gas `gas` and 
+for an RDW target wavelength `λ_target`, pump wavelength `λ0`, fill gas `gas` and
 pump duration `τfwhm`, as determined by the loss limit.
 
 Safety factors can be given as keyword arguments:
@@ -382,7 +377,7 @@ function min_energy(λ_target, λ0, gas, τfwhm; S_sf=5, S_ion=10, S_loss=1, kwa
     Lbar = 1/αbar_a(λ0; kwargs...)
     λzd = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
     N = Nmax(λzd, gas, λ0, τfwhm; S_sf, S_ion, kwargs...)
-    δ_ = δ(gas, λ0, λzd)
+    δ_ = δ(gas, λ0, λzd; kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
 
     a = S_loss * T0^2/(N*abs(δ_)*Lbar)
@@ -395,7 +390,7 @@ function min_energy_loss(λ_target, λ0, gas, τfwhm; S_fiss=1.5, kwargs...)
     ρasq = density_area_product(λ_target, gas, λ0; kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
     Δ_ = Δ(gas, λ0, ρasq; kwargs...)
-    
+
     αbar^2 * S_fiss^2 * T0^3*λ0*Aeff0(;kwargs...)/(π*n2_0(gas)*ρasq*abs(Δ_))
 end
 
@@ -432,7 +427,7 @@ function max_energy(λ_target, λ0, gas, τfwhm, maxlength;
     λzd = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
     N = Nmax(λzd, gas, λ0, τfwhm; S_sf, S_ion, kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
-    δ_ = δ(gas, λ0, λzd)
+    δ_ = δ(gas, λ0, λzd; kwargs...)
     f = fβ2(gas, λzd)
     n20 = n2_0(gas)
     n2w = n2_solid(material)
