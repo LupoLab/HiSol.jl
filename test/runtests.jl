@@ -13,3 +13,9 @@ end
 @testset "Solitons" begin
     include("test_solitons.jl")
 end
+@testset "Compressor" begin
+    include("test_compressor.jl")
+end
+@testset "HCF" begin
+    include("test_HCF.jl")
+end

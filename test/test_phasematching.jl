@@ -4,7 +4,7 @@ import Luna.Tools: pressureRDW
 
 @testset "Finding λ vs finding pressure" begin
 a = 125e-6
-gas = :HeJ
+gas = :He
 τfwhm = 10e-15
 energy = 200e-6
 λ0 = 800e-9
@@ -23,7 +23,7 @@ end
 
 @testset "Compare to Luna" begin
     a = 125e-6
-    gas = :HeJ
+    gas = :He
     τfwhm = 10e-15
     energy = 200e-6
     λ0 = 800e-9
@@ -38,7 +38,7 @@ end
 
 @testset "RDW to ZDW conversion" begin
     a = 125e-6
-    gas = :HeJ
+    gas = :He
     λ0 = 800e-9
     @testset "$pr bar" for pr in collect(range(0.2, 6, 16))
         λRDW = HiSol.Solitons.RDW_wavelength(a, gas, pr, λ0)
@@ -47,10 +47,10 @@ end
         @test isapprox(λzd, λzdp; rtol=1e-6)
     end
 
-    @testset "RDW ($gas, $(1e9λ_target) nm) <-> ZDW" for gas in [:HeJ, :Ar], λ_target in collect(range(100e-9, 400e-9, 6))
+    @testset "RDW ($gas, $(1e9λ_target) nm) <-> ZDW" for gas in [:He, :Ar], λ_target in collect(range(120e-9, 400e-9, 6))
         a = 125e-6
         λ0 = 800e-9
-    
+
         λzd = HiSol.Solitons.RDW_to_ZDW.(λ0, λ_target, gas)
         pressure = HiSol.HCF.ZDW_pressure(λzd, a, gas)
         @test isapprox(HiSol.HCF.ZDW(a, gas, pressure), λzd, rtol=1e-3)

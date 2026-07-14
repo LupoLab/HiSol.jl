@@ -1,4 +1,4 @@
-import HISOL
+import HiSol
 
 λ0 = 1030e-9
 τfwhm_in = 220e-15
@@ -7,9 +7,9 @@ import HISOL
 energy = 200e-6 # 100 kHz, 80 W
 
 gas = :Kr
-maxlength =1.5
+maxlength = 1.5
 
-thickness = 1e-3
-material = :MgF2
+window = HiSol.WindowConstraint(λ0, :MgF2; thickness=1e-3)
 
-HISOL.Compressor.plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength)
+HiSol.Compressor.plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
+                               input_constraint=window, output_constraint=window)

@@ -81,32 +81,17 @@ function mirror_distance(a, λ0, energy, LIDT; S_fluence=5)
 end
 
 """
-    max_flength(a, λ0, energy, τfwhm, maxlength; kwargs...)
+    max_flength(a, energy, τfwhm, maxlength, input_constraint, output_constraint; pressure=nothing)
 
-Find the maximum HCF length given which can fit into a space of `maxlength` given a core radius `a` and a pulse
-at wavelength `λ0` with energy `energy`, FWHM duration `τfwhm`, taking into account both the damage threshold
-of the end mirrors and the nonlinear lens in any windows.
-
-The keywords `entrance_window` and `exit_window` set whether a window is present at either end.
-
-The remaining keyword arguments
-are passed to:
-
-- [`window_distance`](@ref): `thickness`, `material`, `Bmax`
-- [`mirror_distance`](@ref): `LIDT`, `S_fluence`
+Find the maximum HCF length which can fit into a space of `maxlength` for a core radius `a`
+and a pulse with `energy` and FWHM duration `τfwhm`, given the [`LengthConstraint`](@ref)s
+`input_constraint` and `output_constraint` on the entrance and exit side of the HCF.
+`pressure` (in bar) is required by constraints which depend on it (e.g. [`WindowConstraint`](@ref)).
 """
-function max_flength(a, λ0, energy, τfwhm, maxlength;
-                     thickness=1e-3, material=:SiO2, Bmax=0.2,
-                     LIDT=2000, S_fluence=5,
-                     entrance_window=true, exit_window=true)
-
-    dwin = window_distance(a, λ0, energy, τfwhm, thickness; material, Bmax)
-    dmir = mirror_distance(a, λ0, energy, LIDT; S_fluence)
-
-    # TODO: if both window and mirror are present, mirror is always
-    # a little further away than the window
-    L_in = entrance_window ? max(dwin, dmir) : dmir
-    L_out = exit_window ? max(dwin, dmir) : dmir
+function max_flength(a, energy, τfwhm, maxlength, input_constraint, output_constraint;
+                     pressure=nothing)
+    L_in = input_constraint(a, energy, τfwhm; pressure)
+    L_out = output_constraint(a, energy, τfwhm; pressure)
     max(maxlength - L_in - L_out, 0)
 end
 
@@ -180,12 +165,12 @@ function get_Bint(λ0, τfwhm, peakpower, w0, thickness;
 end
 
 function plot_window_thickness_variable(a, pressure, energy, τfwhm, λ0, λmax;
-                            Bmax=0.2, material=:SiO2, aperture_factor=2,
+                            Bmax=0.2, n2=:SiO2, elastic_limit=:SiO2, S_break=4,
+                            aperture_factor=2,
                             LIDT=nothing, S_fluence=5,
                             max_aperture_radius=10e-3)
-    mindist = 0
     maxdist = beamsize_distance(0.64a, λmax, max_aperture_radius/aperture_factor)
-    distance = collect(range(mindist, maxdist, 512))
+    distance = collect(range(0, maxdist, 512))
 
     ΔP = max(pressure-1, 1) # make sure we can handle vacuum
 
@@ -194,34 +179,20 @@ function plot_window_thickness_variable(a, pressure, energy, τfwhm, λ0, λmax;
     end
 
     w0win = diverged_beam.(a, λmax, distance)
-    tNL = window_thickness_nonlinear.(a, λ0, energy, τfwhm, distance; material, Bmax)
-    tP = window_thickness_breaking.(ΔP, aperture_factor*w0win, material)
+    tNL = window_thickness_nonlinear.(a, λ0, energy, τfwhm, distance; material=n2, Bmax)
+    tP = window_thickness_breaking.(ΔP, aperture_factor*w0win, elastic_limit; S_break)
 
-    idx = findfirst(eachindex(distance)) do ii
-        tNL[ii] >= tP[ii]
-    end
-
-    tNL0 = window_thickness_nonlinear(a, λ0, energy, τfwhm, 0; material, Bmax)
-    tP0 = window_thickness_breaking(ΔP, aperture_factor*diverged_beam.(a, λmax, 0), material)
-    if tNL0 > tP0
-        dOpt = 0
-    else
-        dOpt = find_zero([0, 4maxdist]) do d
-            w0win_ = diverged_beam(a, λmax, d)
-            tNL_ = window_thickness_nonlinear(a, λ0, energy, τfwhm, d; material, Bmax)
-            tP_ = window_thickness_breaking(ΔP, aperture_factor*w0win_, material)
-            tNL_ - tP_
-        end
-    end
-
-    # winOpt = aperture_factor*diverged_beam(a, λmax, dOpt)
+    dOpt, tOpt, apOpt = window_distance_thickness_aperture(
+        a, pressure, τfwhm, energy, λ0, λmax;
+        Bmax, n2, elastic_limit, S_break, aperture_factor,
+        max_aperture_radius=4*max_aperture_radius)
 
     plt.figure()
     plt.plot(distance*1e2, tNL*1e3; label="Nonlinear limit")
     plt.plot(distance*1e2, tP*1e3; label="Pressure limit")
-    plt.plot(distance[idx]*1e2, tNL[idx]*1e3, "k.";
+    plt.plot(dOpt*1e2, tOpt*1e3, "k.";
              label=@sprintf("%.2f mm thickness, %.2f cm away, %.2f mm aperture",
-                            tNL[idx]*1e3, distance[idx]*1e2, 1e3aperture_factor*w0win[idx]))
+                            tOpt*1e3, dOpt*1e2, 1e3apOpt))
     plt.axvline(dOpt*1e2; linestyle="--", color="0.5")
     if ~isnothing(LIDT)
         plt.axvline(LIDT_distance*1e2; linestyle="--", color="r")
@@ -338,26 +309,33 @@ and the pressure constraint with the shortest distance, thinnest window and smal
 - `round_aperture`: like `round_thickness`, but for aperture radius (default: `false`)
 - `shape`: pulse shape to assume in calculating the peak power. can be :gauss or :sech
     (default: `sech`)
+- `max_aperture_radius`: largest aperture radius to consider when searching for the optimal
+    distance (default: 50 mm)
 """
 function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λmax;
                                             Bmax=0.2, n2=:SiO2,
                                             elastic_limit=:SiO2, S_break=4,
                                             aperture_factor=2,
                                             round_thickness=false, round_aperture=false,
-                                            shape=:sech)
+                                            shape=:sech,
+                                            max_aperture_radius=50e-3)
     ΔP = max(pressure-1, 1) # make sure we can handle vacuum
 
-    tNL0 = window_thickness_nonlinear(a, λ0, energy, τfwhm, 0; material=n2, Bmax, shape)
-    tP0 = window_thickness_breaking(ΔP, aperture_factor*0.64a, elastic_limit; S_break)
-    if tNL0 > tP0
+    tdiff(d) = let w0win = diverged_beam(a, λmax, d)
+        tNL = window_thickness_nonlinear(a, λ0, energy, τfwhm, d; material=n2, Bmax, shape)
+        tP = window_thickness_breaking(ΔP, aperture_factor*w0win, elastic_limit; S_break)
+        tNL - tP
+    end
+
+    if tdiff(0) > 0
         dOpt = 0
     else
-        dOpt = find_zero([0, 50]) do d
-            w0win = diverged_beam(a, λmax, d)
-            tNL = window_thickness_nonlinear(a, λ0, energy, τfwhm, d; material=n2, Bmax, shape)
-            tP = window_thickness_breaking(ΔP, aperture_factor*w0win, elastic_limit; S_break)
-            tNL - tP
+        maxdist = beamsize_distance(0.64a, λmax, max_aperture_radius/aperture_factor)
+        if tdiff(maxdist) < 0
+            error("Nonlinear and pressure thickness limits do not cross below an aperture "*
+                  "radius of $(1e3max_aperture_radius) mm; increase max_aperture_radius.")
         end
+        dOpt = find_zero(tdiff, (0, maxdist))
     end
 
     distance = dOpt
@@ -381,7 +359,7 @@ function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λ
             # aperture required for new distance
             min_aperture = aperture_factor*diverged_beam(a, λmax, distance)
             n += 1
-            if aperture > min_aperture # all is well
+            if aperture >= min_aperture # all is well
                 break
             elseif n >= 20
                 error("Could not find window parameters")
@@ -403,7 +381,7 @@ function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λ
             # thickness required for new aperture
             min_thickness = window_thickness_breaking(ΔP, aperture, elastic_limit; S_break)
             n += 1
-            if thickness > min_thickness # all is well
+            if thickness >= min_thickness # all is well
                 break
             elseif n >= 20
                 error("Could not find window parameters")
@@ -425,7 +403,7 @@ function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λ
             # aperture required for new distance
             min_aperture = aperture_factor*diverged_beam(a, λmax, distance)
             n += 1
-            if aperture > min_aperture # all is well
+            if aperture >= min_aperture # all is well
                 break
             elseif n >= 20
                 error("Could not find window parameters")
@@ -468,6 +446,251 @@ by `S_break` and defaults to 4.0. The calculation is based on an unclamped circu
 """
 function window_thickness_breaking(Δp_bar, radius, material; S_break=4.0)
     1.06 * radius * sqrt(S_break*Δp_bar*1e5/getmod(material))
+end
+
+"""
+    LengthConstraint
+
+Abstract supertype for length constraints on HCF systems. A `LengthConstraint` is *callable*
+with the signature
+
+    (c::LengthConstraint)(a, energy, τfwhm; pressure=nothing)
+
+and returns the minimum distance between the HCF entrance/exit and whatever the constraint
+refers to (window, mirror etc.) for core radius `a`, pulse `energy` and FWHM duration `τfwhm`.
+`pressure` is the gas pressure in the HCF in bar; constraints which do not depend on it accept
+it as an unused keyword argument.
+
+All `LengthConstraint`s also implement [`details`](@ref), which returns more detailed
+information about the geometry the constraint implies.
+"""
+abstract type LengthConstraint end
+
+"""
+    details(c::LengthConstraint, a, energy, τfwhm; pressure=nothing)
+
+Return a `NamedTuple` with detailed information about the geometry implied by the constraint
+`c` for core radius `a`, pulse `energy` and FWHM duration `τfwhm` at the given `pressure`.
+The `NamedTuple` contains at least the field `distance`, which is identical to the result of
+`c(a, energy, τfwhm; pressure)`.
+"""
+details(c::LengthConstraint, args...; kwargs...) = (;distance=c(args...; kwargs...))
+
+"""
+    NoConstraint()
+
+A [`LengthConstraint`](@ref) which imposes no constraint at all, i.e. the HCF can take up
+the whole available length. Calling it returns zero distance.
+"""
+struct NoConstraint <: LengthConstraint end
+
+(nc::NoConstraint)(a, energy, τfwhm; pressure=nothing) = 0.0
+
+details(nc::NoConstraint, a, energy, τfwhm; pressure=nothing) = (;distance=0.0)
+
+"""
+    FixedConstraint(distance)
+
+A [`LengthConstraint`](@ref) which imposes a fixed `distance` between the HCF and the
+first/last other optical element, regardless of all other parameters.
+"""
+struct FixedConstraint <: LengthConstraint
+    distance::Float64
+end
+
+(fc::FixedConstraint)(a, energy, τfwhm; pressure=nothing) = fc.distance
+
+details(fc::FixedConstraint, a, energy, τfwhm; pressure=nothing) = (;distance=fc.distance)
+
+"""
+    DamageConstraint(λref, LIDT; S_fluence=5, conversion=1)
+
+A [`LengthConstraint`](@ref) which keeps the fluence at wavelength `λref` on the first/last
+mirror below the damage threshold `LIDT` (**in SI units**, i.e. J/m²) divided by the safety
+factor `S_fluence`. `conversion` is an energy conversion factor between the pulse energy in
+the HCF and the pulse energy hitting the mirror (e.g. a frequency-conversion efficiency on
+the exit side).
+
+`details` for this constraint additionally returns `beam_radius`, the 1/e² beam radius at
+`λref` on the mirror.
+
+See also [`mirror_distance`](@ref).
+"""
+struct DamageConstraint <: LengthConstraint
+    λref::Float64
+    LIDT::Float64
+    S_fluence::Float64
+    conversion::Float64
+end
+
+function DamageConstraint(λref, LIDT; S_fluence=5, conversion=1)
+    DamageConstraint(λref, LIDT, S_fluence, conversion)
+end
+
+function (dc::DamageConstraint)(a, energy, τfwhm; pressure=nothing)
+    mirror_distance(a, dc.λref, energy*dc.conversion, dc.LIDT; S_fluence=dc.S_fluence)
+end
+
+function details(dc::DamageConstraint, a, energy, τfwhm; pressure=nothing)
+    distance = dc(a, energy, τfwhm; pressure)
+    beam_radius = diverged_beam(a, dc.λref, distance)
+    (;distance, beam_radius)
+end
+
+"""
+    WindowConstraint(λref, n2; kwargs...)
+
+A [`LengthConstraint`](@ref) for a window at the entrance/exit of the HCF, made of a material
+with nonlinear refractive index `n2` (either a `Symbol` for a known material, or a `Number`
+in m²/W). The constraint keeps the B-integral for a pulse at wavelength `λref` below `Bmax`,
+while requiring that the window is thick enough to hold the gas pressure and that the beam at
+`λmax` passes through the aperture unobstructed. Thickness and aperture can each be fixed or
+left variable (found automatically); if a fixed `thickness` cannot hold the pressure, or a
+fixed `aperture` cannot pass the beam, calling the constraint returns `Inf`.
+
+`details` for this constraint additionally returns `thickness` and `aperture`.
+
+# Keyword arguments:
+- `λmax`: longest wavelength which needs to pass through the window unobstructed
+    (default: `λref`)
+- `Bmax`: maximum B-integral in the window (default: 0.2)
+- `thickness`: window thickness; `Number` (fixed) or `nothing` (variable, default)
+- `round_thickness`: whether to round a variable thickness to a nearby round value. Can be
+    `true` (round up to the next mm), `false` (do not round, default) or `x::Number`
+    (round up to the next multiple of x mm, e.g. `x=0.5` for half-mm steps)
+- `aperture`: aperture radius; `Number` (fixed) or `nothing` (variable, default)
+- `aperture_factor`: multiple of the 1/e² beam radius at `λmax` which determines the required
+    aperture radius (default: 2)
+- `round_aperture`: like `round_thickness`, but for the aperture radius (default: `false`)
+- `LIDT`: damage threshold of the window in J/m²; `Number` (taken into account) or `nothing`
+    (ignore window damage, default)
+- `S_fluence`: safety factor on `LIDT` (default: 5)
+- `conversion`: energy conversion factor between the pulse energy in the HCF and the energy
+    passing through the window (default: 1)
+- `elastic_limit`: elastic limit of the window material; `Symbol` (material) or `Number`
+    (limit in Pascal). Defaults to `n2` if that is a material `Symbol`, and to `:SiO2`
+    otherwise.
+- `S_break`: safety factor on the pressure handling (default: 4)
+- `τfwhm`: overrides the pulse duration for the nonlinearity calculation if required
+    (default: `nothing`, i.e. use the duration passed when calling the constraint)
+"""
+struct WindowConstraint{LT, mT, rtT, raT, tT, eT, τT, aT} <: LengthConstraint
+    λref::Float64 # reference wavelength
+    λmax::Float64 # maximum wavelength we want to pass through unobstructed
+    n2::mT # Symbol (material) or Number (n₂)
+    Bmax::Float64 # Maximum B-integral
+    thickness::tT # Number (fixed) or nothing (variable)
+    round_thickness::rtT # true (round to next mm), false (do not round), or number (fraction of mm)
+    aperture::aT # Fixed aperture (Number) or variable aperture (nothing)
+    aperture_factor::Float64 # ratio between aperture radius and w₀ (1/e² radius)
+    round_aperture::raT # true (round to next mm), false (do not round), or number (fraction of mm)
+    LIDT::LT # Number (take into account window damage) or nothing (ignore window damage)
+    S_fluence::Float64 # safety factor on LIDT
+    conversion::Float64 # conversion factor between input and output energy
+    elastic_limit::eT # Symbol (material) or Number (modulus of rupture)
+    S_break::Float64 # Safety factor on pressure handling
+    τfwhm::τT # Can overwrite pulse duration for nonlinearity calculation if required
+end
+
+function WindowConstraint(λref, n2;
+                          λmax=λref, Bmax=0.2, thickness=nothing, round_thickness=false,
+                          aperture=nothing, aperture_factor=2,
+                          round_aperture=false,
+                          LIDT=nothing, S_fluence=5,
+                          conversion=1,
+                          elastic_limit=nothing, S_break=4,
+                          τfwhm=nothing)
+    WindowConstraint(λref, λmax, n2, Bmax, thickness, round_thickness,
+                     aperture, float(aperture_factor), round_aperture,
+                     LIDT, float(S_fluence),
+                     float(conversion), def_el(elastic_limit, n2), float(S_break),
+                     τfwhm)
+end
+
+# find default elastic limit value
+def_el(el::Nothing, n2::Symbol) = n2 # if n2 is given as a material, use that
+def_el(el::Nothing, n2::Number) = :SiO2 # if n2 is given as number, use silica default
+def_el(el, n2) = el # if elastic limit is given directly, use that
+
+function (wc::WindowConstraint)(a, energy, τfwhm; pressure)
+    details(wc, a, energy, τfwhm; pressure).distance
+end
+
+# Maximum distance between HCF and window such that the beam at λmax still fits through
+# a fixed aperture; -Inf if it does not fit even at zero distance.
+function _max_aperture_distance(a, λmax, aperture, aperture_factor)
+    w0 = 0.64a
+    if aperture > aperture_factor*w0
+        beamsize_distance(w0, λmax, aperture/aperture_factor)
+    else
+        -Inf
+    end
+end
+
+function details(wc::WindowConstraint, a, energy, τfwhm; pressure)
+    energy *= wc.conversion
+    τfwhm = isnothing(wc.τfwhm) ? τfwhm : wc.τfwhm
+    ΔP = max(pressure-1, 1) # make sure we can handle vacuum
+    if isnothing(wc.aperture) && isnothing(wc.thickness)
+        # thickness and aperture are variable: find the joint optimum
+        distance, thickness, aperture = window_distance_thickness_aperture(
+            a, pressure, τfwhm, energy, wc.λref, wc.λmax;
+            Bmax=wc.Bmax, n2=wc.n2,
+            elastic_limit=wc.elastic_limit, S_break=wc.S_break,
+            aperture_factor=wc.aperture_factor,
+            round_thickness=wc.round_thickness,
+            round_aperture=wc.round_aperture,
+        )
+    elseif isnothing(wc.aperture)
+        # aperture is variable, thickness is fixed
+        thickness = wc.thickness
+        distance = window_distance(a, wc.λref, energy, τfwhm, thickness;
+                                   material=wc.n2, Bmax=wc.Bmax)
+        aperture = wc.aperture_factor * diverged_beam(a, wc.λmax, distance)
+        if needround(wc.round_aperture)
+            ra = rounding(wc.round_aperture)*1e-3
+            aperture = ceil(aperture/ra)*ra
+        end
+        min_thickness = window_thickness_breaking(ΔP, aperture, wc.elastic_limit;
+                                                  S_break=wc.S_break)
+        if thickness < min_thickness
+            # fixed thickness cannot hold the pressure at the required aperture
+            distance = Inf
+        end
+    elseif isnothing(wc.thickness)
+        # thickness is variable, aperture is fixed
+        aperture = wc.aperture
+        maximum_distance = _max_aperture_distance(a, wc.λmax, aperture, wc.aperture_factor)
+        thickness = window_thickness_breaking(ΔP, aperture, wc.elastic_limit;
+                                              S_break=wc.S_break)
+        if needround(wc.round_thickness)
+            rt = rounding(wc.round_thickness)*1e-3
+            thickness = ceil(thickness/rt)*rt
+        end
+        distance = window_distance(a, wc.λref, energy, τfwhm, thickness;
+                                   material=wc.n2, Bmax=wc.Bmax)
+        if distance > maximum_distance
+            # beam at λmax no longer fits through the fixed aperture
+            distance = Inf
+        end
+    else
+        # both thickness and aperture are fixed
+        thickness = wc.thickness
+        aperture = wc.aperture
+        maximum_distance = _max_aperture_distance(a, wc.λmax, aperture, wc.aperture_factor)
+        min_thickness = window_thickness_breaking(ΔP, aperture, wc.elastic_limit;
+                                                  S_break=wc.S_break)
+        distance = window_distance(a, wc.λref, energy, τfwhm, thickness;
+                                   material=wc.n2, Bmax=wc.Bmax)
+        if (thickness < min_thickness) || (distance > maximum_distance)
+            distance = Inf
+        end
+    end
+    if ~isnothing(wc.LIDT)
+        dLIDT = mirror_distance(a, wc.λref, energy, wc.LIDT; S_fluence=wc.S_fluence)
+        distance = max(distance, dLIDT)
+    end
+    (;distance, thickness, aperture)
 end
 
 end

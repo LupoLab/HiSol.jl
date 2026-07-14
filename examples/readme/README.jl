@@ -1,11 +1,17 @@
 import PyPlot: plt, pygui #hide
+import PyPlot #hide
+PyPlot.PyCall.pyimport("warnings").filterwarnings("ignore"); #hide
 pygui(false); #hide
 using HiSol; #hide
-figs, _ = design_space_a_energy(200e-9, :He, 800e-9, 10e-15, 10); #hide
+wc = WindowConstraint(800e-9, :SiO2; thickness=1e-3, LIDT=2000); #hide
+figs, _ = design_space_a_energy(200e-9, :He, 800e-9, 10e-15, 10; input_constraint=wc, output_constraint=wc); #hide
 plt.close("all"); #hide
 
 # > [!WARNING]
-# > This package is a work in progress. Function signatures and internals are subject to change without notice. Please use with caution and contribute corrections or improvements if possible. 
+# > This package is a work in progress. Function signatures and internals are subject to change without notice. Please use with caution and contribute corrections or improvements if possible.
+
+# > [!WARNING]
+# > The way space constraints on the HCF system are specified has recently changed. See [API changes](#api-changes) for details and how to update existing scripts.
 
 #=
 # HiSol.jl
@@ -28,28 +34,35 @@ Pkg.add(url="https://github.com/LupoLab/HiSol.jl")
 
 #=
 ## Basic usage
-The main functionality of HiSol.jl is to find the parameter space for soliton self-compression and especially resonant dispersive wave (RDW) emission in gas-filled hollow capillary fibres. The main function which shows the available design space is `design_space_a_energy`. It requires 5 input arguments:
+The main functionality of HiSol.jl is to find the parameter space for soliton self-compression and especially resonant dispersive wave (RDW) emission in gas-filled hollow capillary fibres. The main function which shows the available design space is `design_space_a_energy`. It requires 5 input arguments and 2 keyword arguments:
 ```julia
-design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength)
+design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength; input_constraint, output_constraint)
 ```
 - `λ_target::Number`: the target wavelength for RDW emission in metres.
 - `gas::Symbol`: the gas species.
 - `λ0::Number`: the pump/driving wavelength in metres.
 - `τfwhm::Number`: the pump/driving pulse duration in seconds
 - `maxlength::Number`: the maximum **total** length of the HCF system in metres.
+- `input_constraint`/`output_constraint`: length constraints for the entrance and exit side of the HCF (see below).
 
-As an example, we will design the HCF system used in the first demonstration of RDW emission in a hollow capillary fibre [Travers et al., Nature Photonics 13, 547 (2019)]. First we need to load the package and define our fixed parameters and constraints, then we call the function.
+Because capillary fibres need to be kept perfectly straight, the maximum HCF length is determined by the available straight length of optical table. In most cases, space is required on both sides of the HCF to allow the incoming/outgoing beam to converge/diverge without being detrimentally affected by nonlinearities (in windows) or damaging the steering and focusing optics. How much space is set aside on each side of the HCF is determined by the length constraints (see [Length constraints](#length-constraints) below).
+
+As an example, we will design the HCF system used in the first demonstration of RDW emission in a hollow capillary fibre [Travers et al., Nature Photonics 13, 547 (2019)]. First we need to load the package and define our fixed parameters and constraints, then we call the function. Here we use a `WindowConstraint` for both ends of the HCF: a 1-mm thick fused-silica window which also has a damage threshold of 2000 J/m².
 =#
 using HiSol
 dir = joinpath(pkgdir(HiSol), "examples/readme/figures/") #hide
 
 λ_target = 160e-9 # 160 nm RDW
 gas = :He # helium gas
-λ0 = 800e-9 # 800 nm driving pulse 
+λ0 = 800e-9 # 800 nm driving pulse
 τfwhm = 10e-15 # 10 fs driving pulse
 maxlength = 5 # 5 m maximum setup length
 
-figs, params, as, energies, ratios = design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength)
+window = WindowConstraint(λ0, :SiO2; thickness=1e-3, LIDT=2000)
+
+figs, params, as, energies, ratios = design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength;
+                                                           input_constraint=window,
+                                                           output_constraint=window)
 figs[1].savefig(joinpath(dir, "readme_ex_1a.svg")) #hide
 figs[2].savefig(joinpath(dir, "readme_ex_1b.svg")) #hide
 
@@ -114,19 +127,40 @@ Note that `S_loss` follows the same convention as the other safety factors: a la
 
 The default safety factors are intentionally very conservative, with the aim of generating parameter combinations which are very likely to work in practice. In extreme cases, it can be necessary to adjust the safety factors. For example, RDW emission at very short wavelengths is commonly ionisation-limited. To achieve efficient frequency conversion, the conservative limit can be exceeded by several times&mdash;at the cost of relying on more extreme nonlinear dynamics which can be more sensitive to minor perturbations. Similarly, the loss limit can be exceeded (see e.g. Chen *et al.*, 10.1364/OL.553345) at the cost of a potentially significant reduction in conversion efficiency to the RDW. 
 
-### Maximum HCF length
-> [!NOTE]
-> This part of HiSol.jl is currently being re-developed to be more flexible. The API will change in the near future.
+### Length constraints
+How much of the available space is taken up by the free-space propagation at either end of the HCF is defined by the required keyword arguments `input_constraint` and `output_constraint`. Each of these is a callable object—a subtype of `HiSol.Focusing.LengthConstraint`—which returns the minimum distance between the end of the HCF and the first/last other optical element. Because the two ends are specified separately, they can have completely different constraints (e.g. different window materials, or a window at the entrance but an open exit towards a mirror). Four types of constraint are available:
 
-Because capillary fibres need to be kept perfectly straight, the maximum HCF length is determined by the available straight length of optical table. In most cases, space is required on both sides of the HCF to allow the incoming/outgoing beam to converge/diverge without being detrimentally affected by nonlinearities (in windows) or damaging the steering and focusing optics. Several keywords are available to tailor these length constraints to your requirements:
+- `NoConstraint()`: no space is required at all—the HCF can take up the whole available length.
+- `FixedConstraint(distance)`: a fixed `distance` is set aside, regardless of all other parameters.
+- `DamageConstraint(λref, LIDT; S_fluence=5, conversion=1)`: keeps the fluence on the first/last mirror below the damage threshold `LIDT` (**in SI units**, i.e. J/m²) divided by the safety factor `S_fluence`. `conversion` is an energy conversion factor between the pulse energy in the HCF and the energy hitting the mirror (e.g. a frequency-conversion efficiency on the exit side). Some example values for `LIDT`:
+    - Newport ultrafast silver: 0.12 J/cm² = 1200 J/m²
+    - Thorlabs protected silver: 0.225 J/cm² = 2250 J/m²
+    - Layertec fs-optimised protected silver: 0.38 J/cm² = 3800 J/m²
+- `WindowConstraint(λref, n2; kwargs...)`: a window made of a material with nonlinear refractive index `n2` (either a `Symbol` like `:SiO2` or `:MgF2`, or a `Number` in m²/W). The constraint keeps the B-integral in the window below `Bmax` (default 0.2, see 10.1364/OE.482749), while requiring that the window is thick enough to hold the gas pressure and large enough to pass the beam. The window `thickness` and `aperture` radius can each be given as fixed numbers or left variable, in which case suitable values are found automatically. A window damage threshold can also be taken into account by passing `LIDT`. See the docstring of `WindowConstraint` for the full list of keyword arguments.
 
-- `entrance_window`: whether a window is present at the entrance of the HCF. If `false`, the damage threshold of a mirror is taken into account (see below) instead of a nonlinearity limit in a window. (Default: `true`)
-- `exit_window`: same as above, but for the exit side of the HCF. (Default: `true`)
-- `thickness`: thickness of the window(s). (Default: `1e-3`, i.e. 1 mm)
-- `material`: material of the window(s). (Default: `SiO2`, i.e. fused silica. Other options include `MgF2`.)
-- `Bmax`: maximum B-integral in the window. (Default: 0.2, see 10.1364/OE.482749)
-- `LIDT`: damage treshold of the last mirror before/first mirror after the HCF **in SI units**, i.e. J/m². (Default: 2000, i.e. 0.2 J/cm²)
-- `S_fluence`: safety factor on the mirror fluence. The maximum fluence is the LIDT divided by `S_fluence`. (Default: 5)
+The distance, thickness and aperture implied by a constraint for a given HCF design can be inspected with `HiSol.Focusing.details(constraint, a, energy, τfwhm; pressure)`.
 
-Again, the defaults are conservative limits with the aim of producing working parameter combinations. Note that it is currently not possible to define separate thicknesses/materials/damage thresholds for the entrance and exit sides; this is under development as part of a larger refactor. 
+Again, conservative defaults (e.g. the safety factors `S_fluence` and `S_break`) are used with the aim of producing working parameter combinations.
+
+## API changes
+The way space constraints on the HCF system are specified has recently changed. Previously, `design_space_a_energy` and the functions in `HiSol.Compressor` took a fixed set of keyword arguments (`entrance_window`, `exit_window`, `thickness`, `material`, `Bmax`, `LIDT` and `S_fluence`) which described one window geometry and one mirror damage threshold for both ends of the HCF. These keyword arguments have been **removed** and replaced by the two required keyword arguments `input_constraint` and `output_constraint`, each of which can be any of the constraint types described under [Length constraints](#length-constraints). This makes it possible to specify completely different constraints for the entrance and exit sides, to let window thickness and aperture be found automatically, and to add custom constraint types.
+
+To update existing scripts:
+
+- The old **defaults** (`entrance_window=true, exit_window=true, thickness=1e-3, material=:SiO2, Bmax=0.2, LIDT=2000, S_fluence=5`) are equivalent to passing
+  ```julia
+  window = WindowConstraint(λ0, :SiO2; thickness=1e-3, Bmax=0.2, LIDT=2000, S_fluence=5)
+  design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength;
+                        input_constraint=window, output_constraint=window)
+  ```
+  Passing `LIDT` to the `WindowConstraint` reproduces the old behaviour, in which the mirror damage threshold was taken into account even when a window was present.
+- `entrance_window=false`/`exit_window=false` (no window, mirror damage threshold only) is equivalent to using `DamageConstraint(λ0, LIDT; S_fluence)` for the respective side.
+
+Other changes:
+
+- The function `params` returned by `design_space_a_energy` still takes `(a, energy)` as before, and now optionally accepts the pulse duration as a third argument.
+- `HiSol.Focusing.max_flength` is now called as `max_flength(a, energy, τfwhm, maxlength, input_constraint, output_constraint; pressure)`.
+- `HiSol.Compressor.optimise` and `HiSol.Compressor.plot_optimise` take the same new keyword arguments. The parameters returned by `HiSol.Compressor.params_maxlength` contain the entrance/exit distances `d_in`/`d_out` and beam sizes `beamsize_w0_in`/`beamsize_w0_out` instead of the symmetric `window_distance` and `beamsize_w0`.
+- `HiSol.Design.max_energy`, `HiSol.Design.maximum_radius`, and `HiSol.Design.aplot_energy_maxlength` also take `input_constraint`/`output_constraint` instead of the old keyword arguments.
+- `HiSol.Design.params_maxlength` has been removed; its role is taken over by `HiSol.Design.Params`.
 =#

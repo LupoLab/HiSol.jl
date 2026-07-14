@@ -12,9 +12,8 @@ import Roots: find_zero
 import PyPlot: plt
 
 function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                  thickness=1e-3, material=:SiO2, Bmax=0.2,
-                  LIDT=2000, S_fluence=5, S_sf=1.5, S_ion=10,
-                  entrance_window=true, exit_window=true)
+                  input_constraint, output_constraint,
+                  S_sf=1.5, S_ion=10)
     factor = τfwhm_in/τfwhm_out
 
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy; shape=:gauss)
@@ -45,9 +44,8 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     # Find rough guess by decreasing the core size from something massive
     # This is a reliable way of finding out whether there is a solution
     while ~enough
-        global flength = max_flength(aguess, λ0, energy, τfwhm_in, maxlength;
-                                     thickness, material, Bmax, LIDT, S_fluence,
-                                     entrance_window, exit_window)
+        global flength = max_flength(aguess, energy, τfwhm_in, maxlength,
+                                     input_constraint, output_constraint; pressure=pr)
         if flength <= 0
             @debug(@sprintf("a = %.1f μm: required window distance is too large",1e6aguess))
             aguess *= 0.99
@@ -75,9 +73,8 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     @debug("Initial guess", 1e6*aguess)
     @debug("Initial fibre length", flength)
     aopt = find_zero(aguess) do a
-        global flength = max_flength(a, λ0, energy, τfwhm_in, maxlength;
-                                     thickness, material, Bmax, LIDT, S_fluence,
-                                     entrance_window, exit_window)
+        global flength = max_flength(a, energy, τfwhm_in, maxlength,
+                                     input_constraint, output_constraint; pressure=pr)
         γLeff_this = n2*k0/(A0*a^2)*Leff(flength, a, λ0)
         γLeff_this - γLeff
     end
@@ -89,8 +86,7 @@ function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 end
 
 function params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                          thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5,
-                          entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5)
+                          input_constraint, output_constraint, S_sf=1.5)
 
     ρcrit = critical_density(gas, λ0, τfwhm_in, energy; shape=:gauss)
     ρ = ρcrit/S_sf
@@ -106,9 +102,9 @@ function params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     A0 = Aeff0()
 
     function params(a)
-        maxflength = max_flength(a, λ0, energy, τfwhm_in, maxlength;
-                              thickness, material, Bmax, LIDT, S_fluence,
-                              entrance_window, exit_window)
+        d_in = input_constraint(a, energy, τfwhm_in; pressure=pr)
+        d_out = output_constraint(a, energy, τfwhm_in; pressure=pr)
+        maxflength = max(maxlength - d_in - d_out, 0)
         γthis = n2*k0/(A0*a^2)
         Leff_req = φnl_req/P0/γthis
         maxLeff = Leff(maxflength, a, λ0)
@@ -123,24 +119,23 @@ function params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
         t = transmission.(flength, a, λ0)
         intensity = P0/(A0*a^2)
         φnl = P0*γLeff
-        window_distance = (maxlength-maxflength)/2
-        beamsize_w0 = diverged_beam(a, λ0, window_distance)
+        beamsize_w0_in = diverged_beam(a, λ0, d_in)
+        beamsize_w0_out = diverged_beam(a, λ0, d_out)
         (;φnl=P0*γLeff, transmission=t, intensity, flength,
           broadening_factor=broadening_factor(φnl), pressure=pr, n2=n2,
-          P0=P0, window_distance, beamsize_w0)
+          P0=P0, d_in, d_out, beamsize_w0_in, beamsize_w0_out)
     end
 end
 
 function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                       thickness=1e-3, material=:SiO2, Bmax=0.2, S_sf=1.5, S_ion=10,
-                       entrance_window=true, exit_window=true, LIDT=2000, S_fluence=5,
+                       input_constraint, output_constraint,
+                       S_sf=1.5, S_ion=10,
                        amin=25e-6, amax=500e-6, Na=512,
                        dot=nothing)
     factor = τfwhm_in/τfwhm_out
 
     f = params_maxlength(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                         thickness, material, Bmax, S_sf,
-                         entrance_window, exit_window, LIDT, S_fluence)
+                         input_constraint, output_constraint, S_sf)
 
 
     Isupp = barrier_suppression_intensity(gas)
@@ -152,16 +147,17 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     flength = getindex.(params, :flength)
     t = getindex.(params, :transmission)
     intensity = getindex.(params, :intensity)
-    window_distance = getindex.(params, :window_distance)
-    Ltot = flength .+ (entrance_window ? window_distance : zero(flength)) .+ (exit_window ? window_distance : zero(flength))
+    d_in = getindex.(params, :d_in)
+    d_out = getindex.(params, :d_out)
+    Ltot = flength .+ d_in .+ d_out
     P0 = params[1].P0
     pr = params[1].pressure
-    
+
     t[flength .== 0] .= NaN
 
     try
         global aopt, flopt, _, topt = optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
-                        thickness, material, Bmax, S_sf, S_ion, LIDT, S_fluence, entrance_window, exit_window)
+                        input_constraint, output_constraint, S_sf, S_ion)
         global intopt = P0/(A0*aopt^2)
         global optparams = f(aopt)
     catch e
@@ -194,18 +190,12 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
     plt.plot(1e6a, flength; label="HCF")
     plt.plot(1e6a, Ltot, "--"; label="Total")
     if ~ismissing(aopt)
-        Ltot_opt = (flopt
-        .+ (entrance_window ? optparams.window_distance : 0)
-        .+ (exit_window ? optparams.window_distance : 0)
-        )
+        Ltot_opt = flopt + optparams.d_in + optparams.d_out
         plt.plot(1e6aopt, flopt, "o"; color="k", label=@sprintf("%.2f m", flopt))
         plt.plot(1e6aopt, Ltot_opt, "o"; fillstyle="none", color="k", label=@sprintf("%.2f m", Ltot_opt))
     end
     if ~isnothing(dot)
-        Ltot_dot = (dotparams.flength
-        .+ (entrance_window ? dotparams.window_distance : 0)
-        .+ (exit_window ? dotparams.window_distance : 0)
-        )
+        Ltot_dot = dotparams.flength + dotparams.d_in + dotparams.d_out
         plt.plot(1e6dot, dotparams.flength, "o"; color="b", label=@sprintf("%.2f m", dotparams.flength))
         plt.plot(1e6dot, Ltot_dot, "o"; fillstyle="none", color="b", label=@sprintf("%.2f m", Ltot_dot))
     end

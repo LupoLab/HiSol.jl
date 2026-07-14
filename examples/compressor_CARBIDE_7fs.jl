@@ -14,8 +14,8 @@ energy = 650e-6
 gas = :Ar
 maxlength = 3.56
 
-thickness = 1e-3
-material = :MgF2
+window = HiSol.WindowConstraint(λ0, :MgF2; thickness=1e-3)
 
-HiSol.Compressor.plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength; S_sf=2.5, thickness, material, S_ion=10,
-                               zr_frac=0.2)
+HiSol.Compressor.plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
+                               input_constraint=window, output_constraint=window,
+                               S_sf=2.5, S_ion=10)
