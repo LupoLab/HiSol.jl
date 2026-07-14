@@ -63,7 +63,7 @@ function nonlinear_length(a, gas, pressure, λ0, τfwhm, energy; kwargs...)
     1/(γ_*P0)
 end
 
-nonlinear_length(P0, γ_) = 1/(γ_*P0) 
+nonlinear_length(P0, γ_) = 1/(γ_*P0)
 
 function dispersion_length(a, gas, pressure, λ0, τfwhm; kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
