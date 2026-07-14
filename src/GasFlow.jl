@@ -58,7 +58,7 @@ takes the pressure in Pascal and returns the pump speed in m³/s.
 """
 function gradient_end_pressure(a, flength, gas, Pmax, pump_speed)
     # Pmax has to be SI units (Pascal)!
-    find_zero(1e-3) do p2
+    find_zero((1e-6, 1e5)) do p2
         tube_PVflow(a, flength, gas, Pmax, p2) - p2*pump_speed(p2)
     end
 end
@@ -105,7 +105,7 @@ end
 
 function gradient_end_pressure_choked(a, flength, gas, Pmax, pump_speed)
     qpv = tube_PVflow_choked(a, flength, gas, Pmax)
-    find_zero(1e-3) do p2
+    find_zero((1e-6, 1e5)) do p2
         qpv - p2*pump_speed(p2)
     end
 end

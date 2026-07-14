@@ -7,7 +7,7 @@ import Luna.PhysData: wlfreq, sellmeier_gas, m_u, roomtemp, k_B, c, ε_0, γ3_ga
 λmin = Dict(
     :Xe => 115e-9,
     :Kr => 102e-9,
-    :Ar => 91e-9,
+    :Ar => 106e-9,
     :Ne => 77e-9,
     :He => 89e-9,
     :HeJ => 57e-9
@@ -47,7 +47,7 @@ function n2_solid(material)
         # R. DeSalvo et al., IEEE J. Q. Elec. 32, 10 (1996).
         return 5.79e-21
     elseif material == :CaF2
-        # Ensley Optics Express Vol. 27, No. 26 / 23 December 2019 
+        # Ensley Optics Express Vol. 27, No. 26 / 23 December 2019
         return 1.8e-20
     elseif material == :CaCO3
         # Kabaciński et al., 10.1364/OE.27.011018

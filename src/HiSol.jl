@@ -9,4 +9,7 @@ include("Compressor.jl")
 include("GasFlow.jl")
 include("Design.jl")
 
+import .Design: design_space_a_energy
+export design_space_a_energy
+
 end

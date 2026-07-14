@@ -10,6 +10,7 @@ import Luna.Capillary: besselj, get_unm
 import Roots: find_zero
 import PyPlot: plt
 import Printf: @sprintf
+import Logging: NullLogger, with_logger
 
 """
     window_distance(a, λ0, energy, τfwhm, thickness; material=:SiO2, Bmax=0.2)
@@ -157,7 +158,9 @@ function get_Bint(λ0, τfwhm, peakpower, w0, thickness;
     n2 = getn2(material)
     k0 = 2π/λ0
     if prop
-        grid = Grid.EnvGrid(thickness, λ0, (200e-9, 4e-6), 2000e-15)
+        grid = with_logger(NullLogger()) do 
+            Grid.EnvGrid(thickness, λ0, (100e-9, 4e-6), 2000e-15)
+        end
         Et = sqrt.(gauss.(grid.t, fwhm=τfwhm))
         Pp_in = maximum(abs2.(Et))
         Eω = FFTW.fft(Et)

@@ -10,6 +10,7 @@ import HiSol.Limits: critical_intensity, barrier_suppression_intensity, Nmin, Nm
 import HiSol.HCF: intensity_modeavg, loss_length, ZDW, αbar_a, δ, fβ2, get_unm, Aeff0, dispersion, Δ
 import HiSol.Focusing: max_flength
 import HiSol.Data: n2_0, n2_solid
+import Logging: @warn
 
 struct Params{icT, ocT}
     λ_target::Float64
@@ -78,7 +79,7 @@ function (p::Params)(a, energy, τfwhm)
     Nsol = sqrt(Ld/Lnl)
     Nma = Nmax(p.zdw, p.gas, p.λ0, τfwhm; p.S_ion, p.S_sf)
     Nmi = Nmin(p.λ_target, p.λ0, τfwhm)
-    (;radius=a, density, pressure, intensity, flength, energy, τfwhm, 
+    (;radius=a, density, pressure, intensity, flength, energy, τfwhm,
       N=Nsol, Nmin=Nmi, Nmax=Nma, Lfiss, Lloss, Isupp=p.Isupp, Icrit=p.Icrit)
 end
 
@@ -112,7 +113,7 @@ function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
                         entrance_window=true, exit_window=true,
                         S_ion=10, S_sf=5,
                         kwargs...)
-    ρasq = Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0; kwargs...)
+    ρasq = Δβwg(λ_target, λ0; kwargs...)/Δβρ(λ_target, gas, λ0)
 
     Icrit = critical_intensity(λ_target, gas, λ0; kwargs...)
     Isupp = barrier_suppression_intensity(gas)
@@ -121,21 +122,21 @@ function params_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     ω0 = PhysData.wlfreq(λ0)
 
     zdw = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
-    Nma = Nmax(zdw, gas, λ0, τfwhm; S_ion, S_sf)
+    Nma = Nmax(zdw, gas, λ0, τfwhm; S_ion, S_sf, kwargs...)
 
     δ_ = δ(gas, λ0, zdw; kwargs...)
 
     function params_energy(a)
         density = ρasq/a^2
         pressure = PhysData.pressure(gas, density)
-        
+
         Lloss = loss_length(a, λ0; kwargs...)
-        
+
         aeff = A0*a^2
         n2 = n20 * density
         γ = ω0/PhysData.c*n2/aeff
         β2 = δ_/a^2
-        
+
         function params(energy)
             T0, P0 = T0P0(τfwhm, energy)
             intensity = P0/aeff
@@ -161,11 +162,11 @@ end
 
 function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
                                S_sf=5, S_ion=10, S_loss=1, S_fiss=1.5,
-                               Nplot=512, log_e=false, log_a=false, 
+                               Nplot=512, log_e=false, log_a=false,
                                kwargs...)
 
     params = Params(λ_target, gas, λ0, maxlength; kwargs...)
-        
+
     emin, amin = min_energy(λ_target, λ0, gas, τfwhm;
                             S_sf, S_ion, S_loss)
     emax, amax = max_energy(λ_target, λ0, gas, τfwhm, maxlength;
@@ -177,7 +178,7 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
     else
         energy = collect(range(0.1emin, 1.1emax, Nplot))
     end
-    
+
     if log_a
         a = 10 .^ collect(range(log10(0.9amin), log10(1.3amax), Nplot))
     else
@@ -194,8 +195,8 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
     flength = getindex.(p, :flength)
     Lfiss = getindex.(p, :Lfiss)
 
-    loss_ratio = (S_fiss .* Lfiss) ./ Lloss
-    fiss_ratio = (S_fiss .* Lfiss) ./flength
+    loss_ratio = (S_fiss .* Lfiss) ./ (Lloss/S_loss)
+    fiss_ratio = (S_fiss .* Lfiss) ./ flength
 
     N = getindex.(p, :N)
     Nmax = getindex.(p, :Nmax)
@@ -313,7 +314,7 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     fig = plt.figure()
     fig.set_size_inches(12, 3.5)
     plt.subplot(1, 4, 1)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.loss; cmap="Spectral_r")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.loss; cmap="Spectral_r", rasterized=true)
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.loss, 0; colors="0.4")
     plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
@@ -326,7 +327,7 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.ylim(extrema(1e6energy))
     plt.xlim(extrema(1e6a))
     plt.subplot(1, 4, 2)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.fiss; cmap="Spectral_r")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.fiss; cmap="Spectral_r", rasterized=true)
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.fiss, 0; colors="0.4")
     plt.plot(full.length*1e6, energyb*1e6, color="0.4")
@@ -336,7 +337,7 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.ylim(extrema(1e6energy))
     plt.xlim(extrema(1e6a))
     plt.subplot(1, 4, 3)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmin; cmap="Spectral_r")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmin; cmap="Spectral_r", rasterized=true)
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.Nmin, 0; colors="0.4")
     plt.plot(1e6ab, 1e6full.Nmin, color="0.4")
@@ -346,7 +347,7 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.ylim(extrema(1e6energy))
     plt.xlim(extrema(1e6a))
     plt.subplot(1, 4, 4)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmax; cmap="Spectral_r")
+    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmax; cmap="Spectral_r", rasterized=true)
     plt.clim(0, 2)
     # plt.contour(1e6a, 1e6energy, idcs.Nmax, 0; colors="0.4")
     plt.plot(1e6ab, 1e6full.Nmax, color="0.4")
@@ -355,33 +356,42 @@ function aeplot_maxlength(λ_target, gas, λ0, τfwhm, maxlength;
     plt.title("Maximum soliton order")
     plt.ylim(extrema(1e6energy))
     plt.xlim(extrema(1e6a))
-    
+
     fig.tight_layout()
 
-    Lfiss_ok = params.Lfiss[idcs.all]
+    Lfiss_ok = copy(params.Lfiss)
+    Lfiss_ok[.~idcs.all] .= NaN
+
+    N_ok = copy(params.N)
+    N_ok[.~idcs.all] .= NaN
 
     fig2 = plt.figure()
-    fig2.set_size_inches(6, 3.5)
-    plt.subplot(1, 2, 1)
-    plt.pcolormesh(1e6a, 1e6energy, params.Lfiss)
-    plt.clim(0, 1.5*maximum(Lfiss_ok))
-    plt.contour(1e6a, 1e6energy, idcs.loss, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.fiss, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
-    plt.xlabel("Core radius (μm)")
-    plt.ylabel("Energy (μJ)")
-    # plt.colorbar()
-    # plt.colorbar(label="Fission length (m)")
-    plt.subplot(1, 2, 2)
-    plt.pcolormesh(1e6a, 1e6energy, params.N)
-    plt.clim(1, 1.5maximum(params.Nmax))
-    plt.contour(1e6a, 1e6energy, idcs.Nmax, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.Nmin, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
-    plt.xlabel("Core radius (μm)")
-    # plt.colorbar(label="Soliton order")
+    fig2.set_size_inches(8, 3.5)
+    gs = fig2.add_gridspec(1, 2)
+    gss = gs[1].subgridspec(1, 2; width_ratios=(1, 0.05), wspace=0.05)
+    ax = fig2.add_subplot(gss[1])
+    img = ax.pcolormesh(1e6a, 1e6energy, Lfiss_ok, rasterized=true)
+    ax.set_xlabel("Core radius (μm)")
+    ax.set_ylabel("Energy (μJ)")
+    ax.set_title("Fission length")
+    cax = fig2.add_subplot(gss[2])
+    fig2.colorbar(img; cax, label="Fission length (m)")
+    gss = gs[2].subgridspec(1, 2; width_ratios=(1, 0.05), wspace=0.05)
+    ax = fig2.add_subplot(gss[1])
+    img = ax.pcolormesh(1e6a, 1e6energy, N_ok, rasterized=true)
+    ax.set_xlabel("Core radius (μm)")
+    ax.set_ylabel("Energy (μJ)")
+    ax.set_title("Soliton order")
+    cax = fig2.add_subplot(gss[2])
+    fig2.colorbar(img; cax, label="Soliton order")
+    fig2.tight_layout()
 
-    fig, f, a, energy, ratios
+    (fig, fig2), f, a, energy, ratios
+end
+
+function aeplot_maxlength(args...; kwargs...)
+    @warn "aeplot_maxlength has been replace by design_space_a_energy and will be removed soon."
+    design_space_a_energy(args...; kwargs...)
 end
 
 function aplot_energy_maxlength(λ_target, gas, λ0, τfwhm, energy, maxlength;
@@ -445,7 +455,7 @@ end
     min_energy(λ_target, λ0, gas, τfwhm; S_sf=5, S_ion=10, S_loss=1, kwargs...)
 
 Find the minimum energy and core size which can be used to drive RDW emission in HCF
-for an RDW target wavelength `λ_target`, pump wavelength `λ0`, fill gas `gas` and 
+for an RDW target wavelength `λ_target`, pump wavelength `λ0`, fill gas `gas` and
 pump duration `τfwhm`, as determined by the loss limit.
 
 Safety factors can be given as keyword arguments:
@@ -460,7 +470,7 @@ function min_energy(λ_target, λ0, gas, τfwhm; S_sf=5, S_ion=10, S_loss=1, kwa
     Lbar = 1/αbar_a(λ0; kwargs...)
     λzd = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
     N = Nmax(λzd, gas, λ0, τfwhm; S_sf, S_ion, kwargs...)
-    δ_ = δ(gas, λ0, λzd)
+    δ_ = δ(gas, λ0, λzd; kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
 
     a = S_loss * T0^2/(N*abs(δ_)*Lbar)
@@ -473,7 +483,7 @@ function min_energy_loss(λ_target, λ0, gas, τfwhm; S_fiss=1.5, kwargs...)
     ρasq = density_area_product(λ_target, gas, λ0; kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
     Δ_ = Δ(gas, λ0, ρasq; kwargs...)
-    
+
     αbar^2 * S_fiss^2 * T0^3*λ0*Aeff0(;kwargs...)/(π*n2_0(gas)*ρasq*abs(Δ_))
 end
 
@@ -510,7 +520,7 @@ function max_energy(λ_target, λ0, gas, τfwhm, maxlength;
     λzd = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
     N = Nmax(λzd, gas, λ0, τfwhm; S_sf, S_ion, kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
-    δ_ = δ(gas, λ0, λzd)
+    δ_ = δ(gas, λ0, λzd; kwargs...)
     f = fβ2(gas, λzd)
     n20 = n2_0(gas)
     n2w = n2_solid(material)
@@ -574,7 +584,7 @@ end
 
 Abstract supertype for length constraints on HCF systems. `LengthConstraint`s should be *callable*
 with the signature (LC<:LengthConstraint)(a, energy, τfwhm, pressure) and return
-a minimum distance between the HCF entrance/exit and whatever the constraint refers to. 
+a minimum distance between the HCF entrance/exit and whatever the constraint refers to.
 
 `LengthConstraint`s may optionally implement a method for
 `details(LC<:LengthConstraint, a, energy, τfwhm, pressure=nothing)`,

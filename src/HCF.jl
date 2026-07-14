@@ -22,14 +22,22 @@ wavelength `λ` for the mode defined by `n`, `m`, and `kind`.
 """
     αbar_a(λ::Number; n=1, m=1, kind=:HE)
 
-Calculate the core-size independent prefactor of the power loss coefficient 
+Calculate the core-size independent prefactor of the power loss coefficient
 for the HCF mode defined by `n`, `m`, and `kind`at wavelength `λ`.
 """
-function αbar_a(λ::Number; kwargs...)
-    u_nm = get_unm(;kwargs...)
+function αbar_a(λ::Number; n=1, m=1, kind=:HE)
+    u_nm = get_unm(;n, m, kind)
     ω = wlfreq(λ)
     ν = real(ref_index(:SiO2, λ)) # ν = n_glass/n_gas with n_gas ≈ 1
-    2*c^2*u_nm^2/ω^2 * (ν^2 + 1)/(2*sqrt(ν^2-1))
+    if kind == :HE
+        return 2*c^2*u_nm^2/ω^2 * (ν^2 + 1)/(2*sqrt(ν^2-1))
+    elseif kind == :TE
+        return 2*c^2*u_nm^2/ω^2 * 1/sqrt(ν^2-1)
+    elseif kind == :TM
+        return 2*c^2*u_nm^2/ω^2 * ν^2/sqrt(ν^2-1)
+    else
+        error("Unknown mode kind $kind")
+    end
 end
 
 """
@@ -39,7 +47,7 @@ Calculate the power loss coefficient in dB/m for an HCF with
 core radius `a` at wavelength `λ` for the mode defined by
 `n`, `m`, and `kind`.
 """
-dB_per_m(args...; kw...) = 10/np.log(10)*α(args...; kw...)
+dB_per_m(args...; kw...) = 10/log(10)*α(args...; kw...)
 
 """
     loss_length(a::Number, λ::Number; n=1, m=1, kind=:HE)
@@ -49,7 +57,7 @@ wavelength `λ` for the mode defined by `n`, `m`, and `kind`.
 """
 loss_length(args...; kw...) = 1/α(args...; kw...)
 
-transmission(length, a...; kw...) = exp(-α(a...; kw...)*length) 
+transmission(length, a...; kw...) = exp(-α(a...; kw...)*length)
 
 function transmission(length, a, λ, Nmodes=6, afrac=0.64)
     k = 2π/λ

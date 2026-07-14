@@ -1,6 +1,13 @@
-> [!WARNING]
-> This package is a work in progress. Function signatures and internals are subject to change without notice. Please use with caution and contribute corrections or improvements if possible.
+import PyPlot: plt, pygui #hide
+pygui(false); #hide
+using HiSol; #hide
+figs, _ = design_space_a_energy(200e-9, :He, 800e-9, 10e-15, 10); #hide
+plt.close("all"); #hide
 
+# > [!WARNING]
+# > This package is a work in progress. Function signatures and internals are subject to change without notice. Please use with caution and contribute corrections or improvements if possible. 
+
+#=
 # HiSol.jl
 
 **HiSol.jl** is a Julia package to aid in the design of gas-filled hollow-core fibre systems for pulse compression and soliton dynamics using ultrashort laser pulses. It does this by implementing a collection of design rules developed in the [Laboratory of Ultrafast Physics and Optics](https://lupo-lab.com).
@@ -17,7 +24,9 @@ HiSol.jl is not yet a registered Julia package. You therefore need to install it
 using Pkg
 Pkg.add(url="https://github.com/LupoLab/HiSol.jl")
 ```
+=#
 
+#=
 ## Basic usage
 The main functionality of HiSol.jl is to find the parameter space for soliton self-compression and especially resonant dispersive wave (RDW) emission in gas-filled hollow capillary fibres. The main function which shows the available design space is `design_space_a_energy`. It requires 5 input arguments:
 ```julia
@@ -30,23 +39,25 @@ design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength)
 - `maxlength::Number`: the maximum **total** length of the HCF system in metres.
 
 As an example, we will design the HCF system used in the first demonstration of RDW emission in a hollow capillary fibre [Travers et al., Nature Photonics 13, 547 (2019)]. First we need to load the package and define our fixed parameters and constraints, then we call the function.
-
-````julia
+=#
 using HiSol
+dir = joinpath(pkgdir(HiSol), "examples/readme/figures/") #hide
 
 λ_target = 160e-9 # 160 nm RDW
 gas = :He # helium gas
-λ0 = 800e-9 # 800 nm driving pulse
+λ0 = 800e-9 # 800 nm driving pulse 
 τfwhm = 10e-15 # 10 fs driving pulse
 maxlength = 5 # 5 m maximum setup length
 
 figs, params, as, energies, ratios = design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength)
-````
+figs[1].savefig(joinpath(dir, "readme_ex_1a.svg")) #hide
+figs[2].savefig(joinpath(dir, "readme_ex_1b.svg")) #hide
 
-This will produce the following plots (the `Figure` objects are returned in the `figs` variable above.)
-![Criteria ratios for design space example](examples/readme/figures/readme_ex_1a.svg)
-![Fission length and soliton order in design space example](examples/readme/figures/readme_ex_1b.svg)
+# This will produce the following plots (the `Figure` objects are returned in the `figs` variable above.)
+# ![Criteria ratios for design space example](examples/readme/figures/readme_ex_1a.svg)
+# ![Fission length and soliton order in design space example](examples/readme/figures/readme_ex_1b.svg)
 
+#=
 The top row of plots shows parameter ratios which correspond to the four criteria we need to fulfill to observe RDW emission
 - Loss: the fission length needs to be shorter than the $1/e$ loss length of the capillary. Equivalently, we need $\frac{L_\mathrm{fiss}}{L_\mathrm{loss}} < 1$.
 - Fission length: the fission length needs to be shorter than the maximum capillary length which can fit into the available space for these parameters: $\frac{L_\mathrm{fiss}}{L_{\mathrm{HCF}}} < 1$.
@@ -55,20 +66,14 @@ The top row of plots shows parameter ratios which correspond to the four criteri
 
 In each plot, the grey line shows the boundary between regions where the respective ratio is above and below $1$. The first plot also shows the resulting design space: the region where all four ratios are below $1$, and thus RDW emission should be possible.
 
-The second figure shows the two key parameters for the soliton dynamics&mdash;the fission length and the soliton order&mdash;within the design space outlined by the four criteria.
+The second figure shows the two key parameters for the soliton dynamics&mdash;the fission length and the soliton order&mdash;within the design space outlined by the four criteria. 
 
 To be more precise in our choices, instead of reading numbers off of the plot, we can use the `params` function returned by `design_space_a_energy`. This takes the two coordinates of the figure (core radius, pulse energy) and returns a full list of the specifications of the system. For example, we can find the exact configuration for a 125 μm core radius and 200 μJ:
-
-````julia
+=#
 a = 125e-6 # 125 μm
 energy = 200e-6 # 200 μJ
 p = params(a, energy)
-````
-
-````
-(radius = 0.000125, density = 1.7914408055571105e25, pressure = 0.7253185622214363, intensity = 7.535276434231073e17, flength = 2.8737700334469096, energy = 0.0002, τfwhm = 1.0e-14, N = 2.5016708999581865, Nmin = 2.0856934877556217, Nmax = 3.4849157606268664, Lfiss = 1.6345326571134293, Lloss = 7.059317026423643, Isupp = 1.4622559752929698e19, Icrit = 1.5677245191881308e19)
-````
-
+#=
 Here `p` is now a `NamedTuple` containing the parameters. Its fields are:
 - `radius`: (input) the chosen core radius.
 - `energy`: (input) the chosen pulse energy.
@@ -86,25 +91,12 @@ Here `p` is now a `NamedTuple` containing the parameters. Its fields are:
 - `intensity`: peak intensity of the driving pulse (W/m²), calculated as $P_0/A_\mathrm{eff}$ where $P_0$ is the pulse peak power.
 
 To find, for example, the gas pressure for one point in the design space, we can access the respective field:
-
-````julia
+=#
 p.pressure
-````
-
-````
-0.7253185622214363
-````
-
-Or, similarly, the fission length:
-
-````julia
+# Or, similarly, the fission length:
 p.Lfiss
-````
 
-````
-1.6345326571134293
-````
-
+#=
 ## Additional options
 The `design_space_a_energy` function takes a large range of additional keyword arguments which affect the design rules it applies. The two main categories concern a) safety factors for the nonlinear dynamics themselves b) limitations on the maximum HCF length in the given space (`maxlength`).
 
@@ -120,7 +112,7 @@ The three main keyword arguments which affect the "safety margin" in the calcula
 
 Note that `S_loss` follows the same convention as the other safety factors: a larger value results in a more conservative design rule.
 
-The default safety factors are intentionally very conservative, with the aim of generating parameter combinations which are very likely to work in practice. In extreme cases, it can be necessary to adjust the safety factors. For example, RDW emission at very short wavelengths is commonly ionisation-limited. To achieve efficient frequency conversion, the conservative limit can be exceeded by several times&mdash;at the cost of relying on more extreme nonlinear dynamics which can be more sensitive to minor perturbations. Similarly, the loss limit can be exceeded (see e.g. Chen *et al.*, 10.1364/OL.553345) at the cost of a potentially significant reduction in conversion efficiency to the RDW.
+The default safety factors are intentionally very conservative, with the aim of generating parameter combinations which are very likely to work in practice. In extreme cases, it can be necessary to adjust the safety factors. For example, RDW emission at very short wavelengths is commonly ionisation-limited. To achieve efficient frequency conversion, the conservative limit can be exceeded by several times&mdash;at the cost of relying on more extreme nonlinear dynamics which can be more sensitive to minor perturbations. Similarly, the loss limit can be exceeded (see e.g. Chen *et al.*, 10.1364/OL.553345) at the cost of a potentially significant reduction in conversion efficiency to the RDW. 
 
 ### Maximum HCF length
 > [!NOTE]
@@ -136,9 +128,5 @@ Because capillary fibres need to be kept perfectly straight, the maximum HCF len
 - `LIDT`: damage treshold of the last mirror before/first mirror after the HCF **in SI units**, i.e. J/m². (Default: 2000, i.e. 0.2 J/cm²)
 - `S_fluence`: safety factor on the mirror fluence. The maximum fluence is the LIDT divided by `S_fluence`. (Default: 5)
 
-Again, the defaults are conservative limits with the aim of producing working parameter combinations. Note that it is currently not possible to define separate thicknesses/materials/damage thresholds for the entrance and exit sides; this is under development as part of a larger refactor.
-
----
-
-*This page was generated using [Literate.jl](https://github.com/fredrikekre/Literate.jl).*
-
+Again, the defaults are conservative limits with the aim of producing working parameter combinations. Note that it is currently not possible to define separate thicknesses/materials/damage thresholds for the entrance and exit sides; this is under development as part of a larger refactor. 
+=#
