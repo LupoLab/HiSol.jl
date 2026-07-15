@@ -292,6 +292,8 @@ and the pressure constraint with the shortest distance, thinnest window and smal
     (default: `sech`)
 - `max_aperture_radius`: largest aperture radius to consider when searching for the optimal
     distance (default: 50 mm)
+- `err`: if `true` (default), throw an error when no valid window exists below
+    `max_aperture_radius`; if `false`, return `(Inf, Inf, Inf)` instead
 """
 function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λmax;
                                             Bmax=0.2, n2=:SiO2,
@@ -299,7 +301,8 @@ function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λ
                                             aperture_factor=2,
                                             round_thickness=false, round_aperture=false,
                                             shape=:sech,
-                                            max_aperture_radius=50e-3)
+                                            max_aperture_radius=50e-3,
+                                            err=true)
     ΔP = max(pressure-1, 1) # make sure we can handle vacuum
 
     tdiff(d) = let w0win = diverged_beam(a, λmax, d)
@@ -313,8 +316,13 @@ function window_distance_thickness_aperture(a, pressure, τfwhm, energy, λ0, λ
     else
         maxdist = beamsize_distance(0.64a, λmax, max_aperture_radius/aperture_factor)
         if tdiff(maxdist) < 0
-            error("Nonlinear and pressure thickness limits do not cross below an aperture "*
-                  "radius of $(1e3max_aperture_radius) mm; increase max_aperture_radius.")
+            err && error(
+                "Nonlinear and pressure thickness limits do not cross below an aperture "*
+                "radius of $(1e3max_aperture_radius) mm; increase max_aperture_radius.")
+            # no valid window exists below max_aperture_radius: signal an impossible
+            # constraint (the convention of the other WindowConstraint branches) so that
+            # design-space scans can treat this point as infeasible instead of crashing
+            return Inf, Inf, Inf
         end
         dOpt = find_zero(tdiff, (0, maxdist))
     end
@@ -621,6 +629,7 @@ function details(wc::WindowConstraint, a, energy, τfwhm; pressure)
             aperture_factor=wc.aperture_factor,
             round_thickness=wc.round_thickness,
             round_aperture=wc.round_aperture,
+            err=false,
         )
     elseif isnothing(wc.aperture)
         # aperture is variable, thickness is fixed

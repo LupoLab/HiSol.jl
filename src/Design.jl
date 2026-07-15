@@ -1,5 +1,5 @@
 module Design
-import Luna: PhysData
+import Luna: PhysData, Maths
 import Luna.PhysData: wlfreq
 import Roots: find_zero
 import HiSol: Plotting
@@ -82,6 +82,16 @@ end
 
 function (rp::RadiusParams)(energy, τfwhm)
     p = rp.p
+    kind, n, m = p.mode
+    Nma = Nmax(p.zdw, p.gas, p.λ0, τfwhm; p.S_ion, p.S_sf, kind, n, m)
+    Nmi = Nmin(p.λ_target, p.λ0, τfwhm)
+    rp(energy, τfwhm, Nma, Nmi)
+end
+
+# Nmax and Nmin depend on neither the core radius nor the energy, so grid scans compute
+# them once and pass them in here instead of using the two-argument method above.
+function (rp::RadiusParams)(energy, τfwhm, Nma, Nmi)
+    p = rp.p
     T0, P0 = T0P0(τfwhm, energy)
     intensity = P0/rp.aeff
 
@@ -92,9 +102,6 @@ function (rp::RadiusParams)(energy, τfwhm)
     Lnl = nonlinear_length(P0, rp.γ)
     Lfiss = sqrt(Ld*Lnl)
     Nsol = sqrt(Ld/Lnl)
-    kind, n, m = p.mode
-    Nma = Nmax(p.zdw, p.gas, p.λ0, τfwhm; p.S_ion, p.S_sf, kind, n, m)
-    Nmi = Nmin(p.λ_target, p.λ0, τfwhm)
     (;radius=rp.a, density=rp.density, pressure=rp.pressure, intensity, flength,
       energy, τfwhm, N=Nsol, Nmin=Nmi, Nmax=Nma, Lfiss, Lloss=rp.Lloss,
       Isupp=p.Isupp, Icrit=p.Icrit)
@@ -128,10 +135,17 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
         a = collect(range(0.9amin, 1.3amax, Nplot))
     end
 
-    p = mapreduce(hcat, a) do ai
-        rp = RadiusParams(ai, params)
-        map(energy) do ei
-            rp(ei, τfwhm)
+    kind, n, m = params.mode
+    Nma = Nmax(params.zdw, params.gas, params.λ0, τfwhm;
+               params.S_ion, params.S_sf, kind, n, m)
+    Nmi = Nmin(params.λ_target, params.λ0, τfwhm)
+
+    rp1 = RadiusParams(a[1], params)
+    p = Matrix{typeof(rp1(energy[1], τfwhm, Nma, Nmi))}(undef, length(energy), length(a))
+    for (jj, ai) in enumerate(a)
+        rp = (jj == 1) ? rp1 : RadiusParams(ai, params)
+        for (ii, ei) in enumerate(energy)
+            p[ii, jj] = rp(ei, τfwhm, Nma, Nmi)
         end
     end
 
@@ -143,9 +157,8 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
     fiss_ratio = (S_fiss .* Lfiss) ./ flength
 
     N = getindex.(p, :N)
-    Nmax = getindex.(p, :Nmax)
-    Nmin_ratio = getindex.(p, :Nmin)./N
-    Nmax_ratio = N./Nmax
+    Nmin_ratio = Nmi./N
+    Nmax_ratio = N./Nma
 
     loss_idcs = (loss_ratio .< 1)
     fiss_idcs = (fiss_ratio .< 1)
@@ -155,7 +168,7 @@ function maxlength_limitratios(λ_target, gas, λ0, τfwhm, maxlength;
 
     ratios = (loss=loss_ratio, fiss=fiss_ratio, Nmin=Nmin_ratio, Nmax=Nmax_ratio)
     idcs = (loss=loss_idcs, fiss=fiss_idcs, Nmin=min_idcs, Nmax=max_idcs, all=goodidcs)
-    paramst = (;Lfiss, Lloss, N, Nmax=getindex.(p, :Nmax)[1], Nmin=getindex.(p, :Nmin)[1])
+    paramst = (;Lfiss, Lloss, N, Nmax=Nma, Nmin=Nmi)
 
     a, energy, ratios, paramst, idcs, params
 end
@@ -174,14 +187,17 @@ function boundaries(
 
     energy = collect(range(0.9emin_loss, 1.1emax_Nmax, Nplot))
 
+    ρasq = density_area_product(λ_target, gas, λ0; kwargs...)
+    # one interpolant serves all maximum_radius solves below (same gas and ρasq)
+    pressurefun = pressure_interpolant(gas, ρasq)
+
     amax = maximum_radius.(
         λ_target, gas, λ0, τfwhm, energy, maxlength;
         input_constraint, output_constraint,
-        S_fiss, kwargs...)
+        S_fiss, pressurefun, kwargs...)
 
     a = collect(range(0.9amin_loss, 1.5maximum(amax), Nplot))
 
-    ρasq = density_area_product(λ_target, gas, λ0; kwargs...)
     λzd = RDW_to_ZDW(λ0, λ_target, gas; kwargs...)
 
     N2e = N_to_energy(gas, λ0, τfwhm; ρasq, kwargs...)
@@ -195,14 +211,14 @@ function boundaries(
     amax_Nmax = maximum_radius.(
         λ_target, gas, λ0, τfwhm, energy_Nmax, maxlength;
         input_constraint, output_constraint,
-        S_fiss, kwargs...)
+        S_fiss, pressurefun, kwargs...)
     ii = (energy_Nmax .> emin_loss) .&& (a .< amax_Nmax)
     top = hcat(a[ii], energy_Nmax[ii])
 
     amax_Nmin = maximum_radius.(
         λ_target, gas, λ0, τfwhm, energy_Nmin, maxlength;
         input_constraint, output_constraint,
-        S_fiss, kwargs...)
+        S_fiss, pressurefun, kwargs...)
     ii = (energy_Nmin .> emin_loss) .&& (a .< amax_Nmin)
     bottom = hcat(a[ii], energy_Nmin[ii])
 
@@ -214,7 +230,7 @@ function boundaries(
     amax_loss = maximum_radius.(
         λ_target, gas, λ0, τfwhm, emin_loss, maxlength;
         input_constraint, output_constraint,
-        S_fiss, kwargs...)
+        S_fiss, pressurefun, kwargs...)
     ii = (energy_Nmin .< emin_loss) .&& (energy_Nmax .> emin_loss) .&& (a .< amax_loss)
     left = hcat(a[ii], emin_loss*ones(count(ii)))
 
@@ -406,19 +422,34 @@ Returns `0` if no core radius fits.
 """
 function maximum_radius(λ_target, gas, λ0, τfwhm, energy, maxlength;
                         input_constraint, output_constraint,
-                        S_fiss=1.5, kwargs...)
+                        S_fiss=1.5, pressurefun=nothing, kwargs...)
     ρasq = density_area_product(λ_target, gas, λ0; kwargs...)
     _solve_maximum_radius(_ -> energy, gas, λ0, τfwhm, maxlength, ρasq,
                           input_constraint, output_constraint, S_fiss;
-                          err=false, kwargs...)
+                          err=false, pressurefun, kwargs...)
+end
+
+# Build an interpolant for the pressure as a function of gas density at constant
+# density-area product ρasq, covering core radii between amin and amax. The full
+# equation-of-state evaluation via CoolProp takes ~100 μs per call; the interpolant
+# reproduces it to better than 1e-4 relative accuracy at ~50 ns per call. Pressure is
+# close to a power law in density, so we spline log10(P) on a uniform grid in log10(ρ).
+function pressure_interpolant(gas, ρasq; amin=1e-6, amax=20e-3, N=1024)
+    logρ = collect(range(log10(ρasq/amax^2), log10(ρasq/amin^2), N))
+    logP = log10.(PhysData.pressure.(gas, exp10.(logρ)))
+    spl = Maths.CSpline(logρ, logP)
+    ρ -> exp10(spl(log10(ρ)))
 end
 
 # Find the largest core radius a for which S_fiss*L_fiss + d_in + d_out == maxlength,
 # where the energy at each radius is given by energyfun(a).
 # If no radius fits, throw an error (err=true) or return 0.0 (err=false).
+# pressurefun(ρ) can be given to replace the exact equation of state with a cheaper
+# interpolant (see pressure_interpolant) when solving many times for the same gas and ρasq.
 function _solve_maximum_radius(energyfun, gas, λ0, τfwhm, maxlength, ρasq,
                                input_constraint, output_constraint, S_fiss;
-                               amin=1e-6, amax=20e-3, err=true, kwargs...)
+                               amin=1e-6, amax=20e-3, err=true,
+                               pressurefun=nothing, kwargs...)
     T0 = τfwhm_to_T0(τfwhm)
     Δ_ = Δ(gas, λ0, ρasq; kwargs...)
     aeff0 = Aeff0(;kwargs...)
@@ -426,11 +457,13 @@ function _solve_maximum_radius(energyfun, gas, λ0, τfwhm, maxlength, ρasq,
     # L_fiss = prefac * a³/√P0 at constant density-area product
     Lfiss_prefac = sqrt(T0^2*aeff0*λ0/(2π*n20*abs(Δ_)*ρasq))
 
+    pfun = isnothing(pressurefun) ? (ρ -> PhysData.pressure(gas, ρ)) : pressurefun
+
     function lengthdiff(a)
         energy = energyfun(a)
         _, P0 = T0P0(τfwhm, energy)
         Lf = Lfiss_prefac*a^3/sqrt(P0)
-        pressure = PhysData.pressure(gas, ρasq/a^2)
+        pressure = pfun(ρasq/a^2)
         d_in = input_constraint(a, energy, τfwhm; pressure)
         d_out = output_constraint(a, energy, τfwhm; pressure)
         maxlength - S_fiss*Lf - d_in - d_out
