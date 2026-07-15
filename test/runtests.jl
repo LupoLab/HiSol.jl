@@ -19,3 +19,8 @@ end
 @testset "HCF" begin
     include("test_HCF.jl")
 end
+# must come last: loads a plotting backend, and the no-backend tests rely on
+# no backend having been loaded before
+@testset "Plotting" begin
+    include("test_plotting.jl")
+end

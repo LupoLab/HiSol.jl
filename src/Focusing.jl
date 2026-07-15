@@ -8,8 +8,7 @@ import Luna.PhysData: c
 import LinearAlgebra: mul!, ldiv!
 import Luna.Capillary: besselj, get_unm
 import Roots: find_zero
-import PyPlot: plt
-import Printf: @sprintf
+import HiSol: Plotting
 import Logging: NullLogger, with_logger
 
 """
@@ -187,22 +186,11 @@ function plot_window_thickness_variable(a, pressure, energy, τfwhm, λ0, λmax;
         Bmax, n2, elastic_limit, S_break, aperture_factor,
         max_aperture_radius=4*max_aperture_radius)
 
-    plt.figure()
-    plt.plot(distance*1e2, tNL*1e3; label="Nonlinear limit")
-    plt.plot(distance*1e2, tP*1e3; label="Pressure limit")
-    plt.plot(dOpt*1e2, tOpt*1e3, "k.";
-             label=@sprintf("%.2f mm thickness, %.2f cm away, %.2f mm aperture",
-                            tOpt*1e3, dOpt*1e2, 1e3apOpt))
-    plt.axvline(dOpt*1e2; linestyle="--", color="0.5")
-    if ~isnothing(LIDT)
-        plt.axvline(LIDT_distance*1e2; linestyle="--", color="r")
-    end
-    plt.xlabel("Distance (cm)")
-    plt.ylabel("Window thickness (mm)")
-    plt.legend()
-    rax = plt.gca().twinx()
-    rax.plot(distance*1e2, aperture_factor*w0win*1e3, "k--")
-    rax.set_ylabel("Aperture radius (mm)")
+    plotdata = (;distance, tNL, tP,
+                 aperture=aperture_factor*w0win,
+                 dOpt, tOpt, apOpt,
+                 LIDT_distance=isnothing(LIDT) ? nothing : LIDT_distance)
+    Plotting.getext().plot_window_thickness_variable(plotdata)
 end
 
 function plot_window_thickness_fixed(a, pressure, peakpower, λ0, λmax, aperture_radius;
@@ -211,7 +199,6 @@ function plot_window_thickness_fixed(a, pressure, peakpower, λ0, λmax, apertur
     maxdist = beamsize_distance(0.64a, λmax, aperture_radius/aperture_factor)
     distance = collect(range(mindist, maxdist, 512))
 
-    w0win = diverged_beam.(a, λmax, distance)
     tNL = window_thickness_nonlinear.(a, λ0, peakpower, distance; material, Bmax)
     tP = window_thickness_breaking(pressure-1, aperture_radius, material)
 
@@ -219,15 +206,9 @@ function plot_window_thickness_fixed(a, pressure, peakpower, λ0, λmax, apertur
         tNL[ii] >= tP
     end
 
-    plt.figure()
-    plt.plot(distance*1e2, tNL*1e3; label="Nonlinear limit")
-    plt.axhline(tP*1e3; color="C1", label="Pressure limit")
-    plt.plot(distance[idx]*1e2, tNL[idx]*1e3, "k.";
-    label=@sprintf("%.2f mm thickness, %.2f cm away",
-        tNL[idx]*1e3, distance[idx]*1e2))
-    plt.xlabel("Distance (cm)")
-    plt.ylabel("Window thickness (mm)")
-    plt.legend()
+    plotdata = (;distance, tNL, tP,
+                 crossing=isnothing(idx) ? nothing : (;distance=distance[idx], thickness=tNL[idx]))
+    Plotting.getext().plot_window_thickness_fixed(plotdata)
 end
 
 """

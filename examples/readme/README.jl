@@ -1,11 +1,7 @@
-import PyPlot: plt, pygui #hide
-import PyPlot #hide
-PyPlot.PyCall.pyimport("warnings").filterwarnings("ignore"); #hide
-pygui(false); #hide
+import CairoMakie #hide
 using HiSol; #hide
 wc = WindowConstraint(800e-9, :SiO2; thickness=1e-3, LIDT=2000); #hide
 figs, _ = design_space_a_energy(200e-9, :He, 800e-9, 10e-15, 10; input_constraint=wc, output_constraint=wc); #hide
-plt.close("all"); #hide
 
 # > [!WARNING]
 # > This package is a work in progress. Function signatures and internals are subject to change without notice. Please use with caution and contribute corrections or improvements if possible.
@@ -47,8 +43,11 @@ design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength; input_constraint, 
 
 Because capillary fibres need to be kept perfectly straight, the maximum HCF length is determined by the available straight length of optical table. In most cases, space is required on both sides of the HCF to allow the incoming/outgoing beam to converge/diverge without being detrimentally affected by nonlinearities (in windows) or damaging the steering and focusing optics. How much space is set aside on each side of the HCF is determined by the length constraints (see [Length constraints](#length-constraints) below).
 
+To create the plots, a plotting backend has to be loaded alongside HiSol.jl itself (see [Plotting backends](#plotting-backends) below). Here we use CairoMakie, which produces static plots; for interactive plot windows, load GLMakie instead.
+
 As an example, we will design the HCF system used in the first demonstration of RDW emission in a hollow capillary fibre [Travers et al., Nature Photonics 13, 547 (2019)]. First we need to load the package and define our fixed parameters and constraints, then we call the function. Here we use a `WindowConstraint` for both ends of the HCF: a 1-mm thick fused-silica window which also has a damage threshold of 2000 J/m².
 =#
+using CairoMakie
 using HiSol
 dir = joinpath(pkgdir(HiSol), "examples/readme/figures/") #hide
 
@@ -63,8 +62,8 @@ window = WindowConstraint(λ0, :SiO2; thickness=1e-3, LIDT=2000)
 figs, params, as, energies, ratios = design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength;
                                                            input_constraint=window,
                                                            output_constraint=window)
-figs[1].savefig(joinpath(dir, "readme_ex_1a.svg")) #hide
-figs[2].savefig(joinpath(dir, "readme_ex_1b.svg")) #hide
+save(joinpath(dir, "readme_ex_1a.svg"), figs[1]) #hide
+save(joinpath(dir, "readme_ex_1b.svg"), figs[2]) #hide
 
 # This will produce the following plots (the `Figure` objects are returned in the `figs` variable above.)
 # ![Criteria ratios for design space example](examples/readme/figures/readme_ex_1a.svg)
@@ -142,6 +141,31 @@ The distance, thickness and aperture implied by a constraint for a given HCF des
 
 Again, conservative defaults (e.g. the safety factors `S_fluence` and `S_break`) are used with the aim of producing working parameter combinations.
 
+## Plotting backends
+HiSol.jl does not itself depend on a plotting package. To create plots, load one of the supported backends alongside HiSol.jl:
+
+- [GLMakie](https://docs.makie.org/): interactive plot windows and the **interactive design-space explorers** (see below). Recommended for interactive use.
+- [CairoMakie](https://docs.makie.org/): static publication-quality output (SVG/PDF/PNG).
+- [PythonPlot](https://github.com/JuliaPy/PythonPlot.jl) or [PyPlot](https://github.com/JuliaPy/PyPlot.jl): the full capability of matplotlib.
+
+For example:
+```julia
+using GLMakie
+using HiSol
+# ... plotting functions are now available
+```
+Calling a plotting function without a backend loaded throws an error. The interactive explorers and the 3D design-space plot (below) are only available with Makie backends.
+
+## Interactive and 3D design-space exploration
+With GLMakie loaded, `interactive_design_space()` opens a window showing the same maps as `design_space_a_energy`, with graphical controls for all parameters (target wavelength, gas, pump wavelength and duration, setup length, safety factors and the length constraints at both ends). Press *Compute* to regenerate the maps and click in any map to inspect the full system specification at that point.
+
+The design space can also be shown in three dimensions, with core radius and energy as two of the axes and either the target wavelength or the pulse duration as the third. Passing a range for exactly one of `λ_target` or `τfwhm` selects the third axis:
+```julia
+fig, data = design_space_a_energy_3D(range(120e-9, 300e-9, 32), gas, λ0, τfwhm, maxlength;
+                                     input_constraint=window, output_constraint=window)
+```
+The boundary of the design space is drawn as an isosurface, which can be rotated freely in GLMakie. The interactive version, `interactive_design_space_3D()`, additionally shows a 2D slice which can be moved along the third axis with a slider. See [`examples/design_space_gui.jl`](examples/design_space_gui.jl), [`examples/design_space_3D.jl`](examples/design_space_3D.jl) and [`examples/design_space_3D_gui.jl`](examples/design_space_3D_gui.jl).
+
 ## API changes
 The way space constraints on the HCF system are specified has recently changed. Previously, `design_space_a_energy` and the functions in `HiSol.Compressor` took a fixed set of keyword arguments (`entrance_window`, `exit_window`, `thickness`, `material`, `Bmax`, `LIDT` and `S_fluence`) which described one window geometry and one mirror damage threshold for both ends of the HCF. These keyword arguments have been **removed** and replaced by the two required keyword arguments `input_constraint` and `output_constraint`, each of which can be any of the constraint types described under [Length constraints](#length-constraints). This makes it possible to specify completely different constraints for the entrance and exit sides, to let window thickness and aperture be found automatically, and to add custom constraint types.
 
@@ -163,4 +187,5 @@ Other changes:
 - `HiSol.Compressor.optimise` and `HiSol.Compressor.plot_optimise` take the same new keyword arguments. The parameters returned by `HiSol.Compressor.params_maxlength` contain the entrance/exit distances `d_in`/`d_out` and beam sizes `beamsize_w0_in`/`beamsize_w0_out` instead of the symmetric `window_distance` and `beamsize_w0`.
 - `HiSol.Design.max_energy`, `HiSol.Design.maximum_radius`, and `HiSol.Design.aplot_energy_maxlength` also take `input_constraint`/`output_constraint` instead of the old keyword arguments.
 - `HiSol.Design.params_maxlength` has been removed; its role is taken over by `HiSol.Design.Params`.
+- HiSol.jl no longer depends on PyPlot directly. A plotting backend (GLMakie, CairoMakie, PythonPlot or PyPlot) must be loaded to create plots—see [Plotting backends](#plotting-backends).
 =#

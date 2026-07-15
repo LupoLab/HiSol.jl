@@ -1,9 +1,8 @@
 module Design
-import PyPlot: plt
 import Luna: PhysData
 import Luna.PhysData: wlfreq
-import Luna.Plotting: cmap_colours
 import Roots: find_zero
+import HiSol: Plotting
 import HiSol.Solitons: T0P0, RDW_to_ZDW, τfwhm_to_T0, N_to_energy, dispersion_length, nonlinear_length, density_area_product
 import HiSol.Limits: critical_intensity, barrier_suppression_intensity, Nmin, Nmax
 import HiSol.HCF: αbar_a, δ, Aeff0, Δ
@@ -265,84 +264,15 @@ function design_space_a_energy(λ_target, gas, λ0, τfwhm, maxlength;
         input_constraint, output_constraint,
         Nplot, kwargs...)
 
-    patch = plt.Polygon(1e6cropped.vertices; closed=false,
-                               facecolor="0.5", edgecolor="none", alpha=0.3)
-
-
-    fig = plt.figure()
-    fig.set_size_inches(12, 3.5)
-    plt.subplot(1, 4, 1)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.loss; cmap="Spectral_r", rasterized=true)
-    plt.clim(0, 2)
-    # plt.contour(1e6a, 1e6energy, idcs.loss, 0; colors="0.4")
-    plt.contour(1e6a, 1e6energy, idcs.all, 0; colors="k")
-    plt.axhline(1e6full.loss; color="0.4")
-    # plt.plot(1e6allbounds[:, 1], 1e6allbounds[:, 2])
-    plt.gca().add_patch(patch)
-    plt.ylabel("Energy (μJ)")
-    plt.xlabel("Core radius (μm)")
-    plt.title("Loss")
-    plt.ylim(extrema(1e6energy))
-    plt.xlim(extrema(1e6a))
-    plt.subplot(1, 4, 2)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.fiss; cmap="Spectral_r", rasterized=true)
-    plt.clim(0, 2)
-    # plt.contour(1e6a, 1e6energy, idcs.fiss, 0; colors="0.4")
-    plt.plot(full.length*1e6, energyb*1e6, color="0.4")
-    plt.gca().set_yticklabels([])
-    plt.xlabel("Core radius (μm)")
-    plt.title("Fission length")
-    plt.ylim(extrema(1e6energy))
-    plt.xlim(extrema(1e6a))
-    plt.subplot(1, 4, 3)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmin; cmap="Spectral_r", rasterized=true)
-    plt.clim(0, 2)
-    # plt.contour(1e6a, 1e6energy, idcs.Nmin, 0; colors="0.4")
-    plt.plot(1e6ab, 1e6full.Nmin, color="0.4")
-    plt.xlabel("Core radius (μm)")
-    plt.gca().set_yticklabels([])
-    plt.title("Minimum soliton order")
-    plt.ylim(extrema(1e6energy))
-    plt.xlim(extrema(1e6a))
-    plt.subplot(1, 4, 4)
-    plt.pcolormesh(1e6a, 1e6energy, ratios.Nmax; cmap="Spectral_r", rasterized=true)
-    plt.clim(0, 2)
-    # plt.contour(1e6a, 1e6energy, idcs.Nmax, 0; colors="0.4")
-    plt.plot(1e6ab, 1e6full.Nmax, color="0.4")
-    plt.xlabel("Core radius (μm)")
-    plt.gca().set_yticklabels([])
-    plt.title("Maximum soliton order")
-    plt.ylim(extrema(1e6energy))
-    plt.xlim(extrema(1e6a))
-
-    fig.tight_layout()
-
     Lfiss_ok = copy(params.Lfiss)
     Lfiss_ok[.~idcs.all] .= NaN
 
     N_ok = copy(params.N)
     N_ok[.~idcs.all] .= NaN
 
-    fig2 = plt.figure()
-    fig2.set_size_inches(8, 3.5)
-    gs = fig2.add_gridspec(1, 2)
-    gss = gs[1].subgridspec(1, 2; width_ratios=(1, 0.05), wspace=0.05)
-    ax = fig2.add_subplot(gss[1])
-    img = ax.pcolormesh(1e6a, 1e6energy, Lfiss_ok, rasterized=true)
-    ax.set_xlabel("Core radius (μm)")
-    ax.set_ylabel("Energy (μJ)")
-    ax.set_title("Fission length")
-    cax = fig2.add_subplot(gss[2])
-    fig2.colorbar(img; cax, label="Fission length (m)")
-    gss = gs[2].subgridspec(1, 2; width_ratios=(1, 0.05), wspace=0.05)
-    ax = fig2.add_subplot(gss[1])
-    img = ax.pcolormesh(1e6a, 1e6energy, N_ok, rasterized=true)
-    ax.set_xlabel("Core radius (μm)")
-    ax.set_ylabel("Energy (μJ)")
-    ax.set_title("Soliton order")
-    cax = fig2.add_subplot(gss[2])
-    fig2.colorbar(img; cax, label="Soliton order")
-    fig2.tight_layout()
+    plotdata = (;a, energy, ratios, idcs, Lfiss_ok, N_ok,
+                 ab, energyb, full, cropped)
+    fig, fig2 = Plotting.getext().design_space_a_energy(plotdata)
 
     paramsf(ai, ei, τi=τfwhm) = f(ai, ei, τi)
 
@@ -379,25 +309,11 @@ function aplot_energy_maxlength(λ_target, gas, λ0, τfwhm, energy, maxlength;
     goodidcs = @. loss_idcs & fiss_idcs & min_idcs & max_idcs
     agood = a[goodidcs]
 
-    cols = cmap_colours(4)
-    fig = plt.figure()
-    l, = plt.plot(1e6a, loss_ratio; label="\$L_l / 1.5L_f\$", c=cols[1])
-    plt.fill_between(1e6a[loss_idcs], ones(length(a[loss_idcs])), loss_ratio[loss_idcs]; color=l.get_color(), alpha=0.25)
-    l, = plt.plot(1e6a, fiss_ratio; label="\$L_{max} / 1.5L_f\$", c=cols[2])
-    plt.fill_between(1e6a[fiss_idcs], ones(length(a[fiss_idcs])), fiss_ratio[fiss_idcs]; color=l.get_color(), alpha=0.25)
-    l, = plt.plot(1e6a, Nmin_ratio; label="\$N / N_{min}\$", c=cols[3])
-    plt.fill_between(1e6a[min_idcs], ones(length(a[min_idcs])), Nmin_ratio[min_idcs]; color=l.get_color(), alpha=0.25)
-    l, = plt.plot(1e6a, Nmax_ratio; label="\$N_{max} / N\$", c=cols[4])
-    plt.fill_between(1e6a[max_idcs], ones(length(a[max_idcs])), Nmax_ratio[max_idcs]; color=l.get_color(), alpha=0.25)
-    plt.axhline(1; color="0.5")
-    if length(agood) > 1
-        plt.fill_between(1e6*agood, 0, 1, color="r", alpha=0.2)
-    end
-    plt.legend()
-    plt.ylim(0, 1.5*loss_ratio[1])
-    plt.xlim(1e6.*extrema(a))
-    plt.xlabel("Core radius (μm)")
-    plt.ylabel("Ratio")
+    plotdata = (;a,
+                 ratios=(;loss=loss_ratio, fiss=fiss_ratio, Nmin=Nmin_ratio, Nmax=Nmax_ratio),
+                 idcs=(;loss=loss_idcs, fiss=fiss_idcs, Nmin=min_idcs, Nmax=max_idcs),
+                 agood)
+    fig = Plotting.getext().aplot_energy_maxlength(plotdata)
 
     paramsf(ai, ei=energy, τi=τfwhm) = f(ai, ei, τi)
 
@@ -534,6 +450,171 @@ function _solve_maximum_radius(energyfun, gas, λ0, τfwhm, maxlength, ρasq,
     end
     ii == lastindex(grid) && return grid[end]
     find_zero(lengthdiff, (grid[ii], grid[ii+1]))
+end
+
+"""
+    design_space_3D_data(λ_target, gas, λ0, τfwhm, maxlength; kwargs...)
+
+Compute the design space for RDW emission on a three-dimensional grid. Exactly **one** of
+`λ_target` and `τfwhm` must be given as an `AbstractVector` or range; this becomes the third
+axis of the grid (the other two axes are core radius and pulse energy as in
+[`design_space_a_energy`](@ref)).
+
+The keyword arguments are the same as for [`design_space_a_energy`](@ref), except that the
+grid size is set by `Nplot=(Na, Nenergy, N3)`.
+
+Returns a `NamedTuple` with fields:
+- `a`, `energy`, `third`: the grid axes (`third` is the swept λ_target or τfwhm)
+- `thirdaxis`: `:λ_target` or `:τfwhm`
+- `margin`: array of size `(Na, Nenergy, N3)` containing the *largest* of the four criteria
+  ratios (loss, fission length, minimum and maximum soliton order). The design space is the
+  region where `margin < 1`, and its boundary is the `margin == 1` isosurface.
+"""
+function design_space_3D_data(λ_target, gas, λ0, τfwhm, maxlength;
+                              input_constraint, output_constraint,
+                              S_sf=5, S_ion=10, S_fiss=1.5, S_loss=1,
+                              Nplot=(128, 128, 32), kwargs...)
+    λt_vec = λ_target isa AbstractVector
+    τ_vec = τfwhm isa AbstractVector
+    λt_vec == τ_vec && throw(ArgumentError(
+        "Exactly one of λ_target and τfwhm must be given as a range or vector."))
+    Na, Ne, N3 = Nplot
+
+    third = λt_vec ? collect(float.(λ_target)) : collect(float.(τfwhm))
+    thirdaxis = λt_vec ? :λ_target : :τfwhm
+
+    if λt_vec
+        paramss = [Params(λt, gas, λ0, maxlength;
+                          input_constraint, output_constraint,
+                          S_ion, S_sf, S_fiss, S_loss, kwargs...) for λt in third]
+    else
+        p1 = Params(λ_target, gas, λ0, maxlength;
+                    input_constraint, output_constraint,
+                    S_ion, S_sf, S_fiss, S_loss, kwargs...)
+        paramss = fill(p1, N3)
+    end
+
+    # global a/energy axes: envelope of the per-slice extremes
+    emin = Inf
+    emax = -Inf
+    amin = Inf
+    amax = -Inf
+    for t3 in third
+        λt = λt_vec ? t3 : λ_target
+        τi = λt_vec ? τfwhm : t3
+        emin_i, amin_i = min_energy(λt, λ0, gas, τi; S_sf, S_ion, S_loss, kwargs...)
+        emax_i, amax_i = max_energy(λt, λ0, gas, τi, maxlength;
+                                    input_constraint, output_constraint,
+                                    S_sf, S_ion, S_fiss, kwargs...)
+        emin = min(emin, emin_i)
+        emax = max(emax, emax_i)
+        amin = min(amin, amin_i)
+        amax = max(amax, amax_i)
+    end
+    energy = collect(range(0.1emin, 1.1emax, Ne))
+    a = collect(range(0.9amin, 1.3amax, Na))
+
+    margin = Array{Float64}(undef, Na, Ne, N3)
+    for k in eachindex(third)
+        p = paramss[k]
+        τi = λt_vec ? τfwhm : third[k]
+        for (ja, aj) in enumerate(a)
+            rp = RadiusParams(aj, p)
+            for (je, ej) in enumerate(energy)
+                r = rp(ej, τi)
+                loss_ratio = S_fiss*r.Lfiss/(r.Lloss/S_loss)
+                fiss_ratio = S_fiss*r.Lfiss/r.flength
+                margin[ja, je, k] = max(loss_ratio, fiss_ratio,
+                                        r.Nmin/r.N, r.N/r.Nmax)
+            end
+        end
+    end
+
+    (;a, energy, third, thirdaxis, margin)
+end
+
+"""
+    design_space_a_energy_3D(λ_target, gas, λ0, τfwhm, maxlength; kwargs...)
+
+Show a three-dimensional representation of the design space for RDW emission, with core
+radius and pulse energy as two of the axes and the third axis being either the RDW target
+wavelength or the pump pulse duration: exactly **one** of `λ_target` and `τfwhm` must be
+given as an `AbstractVector` or range, and becomes the third axis. The boundary of the
+design space is drawn as an isosurface.
+
+Keyword arguments are the same as for [`design_space_a_energy`](@ref), with the grid size
+set by `Nplot=(Na, Nenergy, N3)`.
+
+!!! note
+    This plot is only available with a Makie backend (e.g. GLMakie for an interactive
+    window).
+
+Returns `(fig, data)` where `data` is the output of [`design_space_3D_data`](@ref).
+"""
+function design_space_a_energy_3D(λ_target, gas, λ0, τfwhm, maxlength; kwargs...)
+    data = design_space_3D_data(λ_target, gas, λ0, τfwhm, maxlength; kwargs...)
+    fig = Plotting.getext_makie().design_space_3D(data)
+    fig, data
+end
+
+"""
+    interactive_design_space(; kwargs...)
+
+Open an interactive window to explore the design space for RDW emission, showing the same
+plots as [`design_space_a_energy`](@ref) with graphical controls for the physical
+parameters, safety factors and length constraints. The keyword arguments seed the initial
+state of the controls:
+
+- `λ_target` (default 160e-9), `gas` (default `:He`), `λ0` (default 800e-9),
+  `τfwhm` (default 10e-15), `maxlength` (default 5)
+- `S_sf`, `S_ion`, `S_fiss`, `S_loss`: safety factors
+- `input_constraint`/`output_constraint`: initial length constraints. These must be
+  `WindowConstraint`, `DamageConstraint`, `FixedConstraint` or `NoConstraint`; only the
+  parameters which are adjustable in the GUI are carried over.
+- `Nplot`: initial grid size (default 256)
+
+!!! note
+    This requires an interactive Makie backend, i.e. GLMakie or WGLMakie.
+"""
+function interactive_design_space(; λ_target=160e-9, gas=:He, λ0=800e-9, τfwhm=10e-15,
+                                    maxlength=5,
+                                    S_sf=5, S_ion=10, S_fiss=1.5, S_loss=1,
+                                    input_constraint=WindowConstraint(λ0, :SiO2),
+                                    output_constraint=WindowConstraint(λ0, :SiO2),
+                                    Nplot=256)
+    Plotting.getext_makie().interactive_design_space(;
+        λ_target, gas, λ0, τfwhm, maxlength,
+        S_sf, S_ion, S_fiss, S_loss,
+        input_constraint, output_constraint, Nplot)
+end
+
+"""
+    interactive_design_space_3D(; kwargs...)
+
+Open an interactive window showing the three-dimensional design space for RDW emission
+(see [`design_space_a_energy_3D`](@ref)) with graphical controls like
+[`interactive_design_space`](@ref). Exactly **one** of `λ_target` and `τfwhm` must be given
+as an `AbstractVector` or range (default: `λ_target` from 120 nm to 300 nm); this becomes
+the third axis of the plot. The design-space boundary is shown as a rotatable isosurface
+alongside a 2D slice which can be moved along the third axis with a slider.
+
+!!! note
+    This requires an interactive Makie backend, i.e. GLMakie or WGLMakie.
+"""
+function interactive_design_space_3D(; λ_target=range(120e-9, 300e-9, 32), gas=:He,
+                                       λ0=800e-9, τfwhm=10e-15, maxlength=5,
+                                       S_sf=5, S_ion=10, S_fiss=1.5, S_loss=1,
+                                       input_constraint=WindowConstraint(λ0, :SiO2),
+                                       output_constraint=WindowConstraint(λ0, :SiO2),
+                                       Nplot=(96, 96, 24))
+    λt_vec = λ_target isa AbstractVector
+    τ_vec = τfwhm isa AbstractVector
+    λt_vec == τ_vec && throw(ArgumentError(
+        "Exactly one of λ_target and τfwhm must be given as a range or vector."))
+    Plotting.getext_makie().interactive_design_space_3D(;
+        λ_target, gas, λ0, τfwhm, maxlength,
+        S_sf, S_ion, S_fiss, S_loss,
+        input_constraint, output_constraint, Nplot)
 end
 
 end

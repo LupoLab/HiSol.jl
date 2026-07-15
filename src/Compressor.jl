@@ -9,7 +9,7 @@ import Luna.Tools: τfw_to_τ0
 import Logging: @debug, @info
 import Printf: @sprintf
 import Roots: find_zero
-import PyPlot: plt
+import HiSol: Plotting
 
 function optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                   input_constraint, output_constraint,
@@ -155,90 +155,31 @@ function plot_optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
 
     t[flength .== 0] .= NaN
 
-    try
-        global aopt, flopt, _, topt = optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
+    opt = try
+        aopt, flopt, _, topt = optimise(τfwhm_in, τfwhm_out, gas, λ0, energy, maxlength;
                         input_constraint, output_constraint, S_sf, S_ion)
-        global intopt = P0/(A0*aopt^2)
-        global optparams = f(aopt)
+        optparams = f(aopt)
+        (;a=aopt, flength=flopt, transmission=topt,
+          intensity=P0/(A0*aopt^2),
+          Ltot=flopt + optparams.d_in + optparams.d_out)
     catch e
-        global aopt = missing
+        nothing
     end
 
-    if ~isnothing(dot)
+    dotdata = if isnothing(dot)
+        nothing
+    else
         dotparams = f(dot)
+        (;a=dot, flength=dotparams.flength, transmission=dotparams.transmission,
+          intensity=P0/(A0*dot^2),
+          broadening_factor=dotparams.broadening_factor,
+          Ltot=dotparams.flength + dotparams.d_in + dotparams.d_out)
     end
 
-    fig = plt.figure()
-    fig.set_size_inches(15, 4)
-    plt.subplot(1, 4, 1)
-    plt.plot(1e6a, broadfac)
-    if ~ismissing(aopt)
-        plt.plot(1e6aopt, factor, "o"; color="k", label=@sprintf("%.1f μm", 1e6aopt))
-    end
-    if ~isnothing(dot)
-        plt.plot(1e6dot, dotparams.broadening_factor, "o"; color="b", label=@sprintf("%.1f μm", 1e6dot))
-    end
-    plt.axhline(factor; linestyle="--", color="k", label="Required")
-    plt.xlim(1e6.*extrema(a))
-    plt.ylim(ymin=0)
-    plt.legend(;frameon=false, fontsize=10)
-    plt.xlabel("Core radius (μm)")
-    plt.ylabel("Broadening factor")
-
-    
-    plt.subplot(1, 4, 2)
-    plt.plot(1e6a, flength; label="HCF")
-    plt.plot(1e6a, Ltot, "--"; label="Total")
-    if ~ismissing(aopt)
-        Ltot_opt = flopt + optparams.d_in + optparams.d_out
-        plt.plot(1e6aopt, flopt, "o"; color="k", label=@sprintf("%.2f m", flopt))
-        plt.plot(1e6aopt, Ltot_opt, "o"; fillstyle="none", color="k", label=@sprintf("%.2f m", Ltot_opt))
-    end
-    if ~isnothing(dot)
-        Ltot_dot = dotparams.flength + dotparams.d_in + dotparams.d_out
-        plt.plot(1e6dot, dotparams.flength, "o"; color="b", label=@sprintf("%.2f m", dotparams.flength))
-        plt.plot(1e6dot, Ltot_dot, "o"; fillstyle="none", color="b", label=@sprintf("%.2f m", Ltot_dot))
-    end
-    plt.legend(;frameon=false, fontsize=10)
-    plt.xlim(1e6.*extrema(a))
-    plt.ylim(ymin=0)
-    plt.xlabel("Core radius (μm)")
-    plt.ylabel("Length (m)")
-
-    plt.subplot(1, 4, 3)
-    plt.plot(1e6a, 100*t)
-    if ~ismissing(aopt)
-        plt.plot(1e6aopt, 100*topt, "o"; color="k", label=@sprintf("%.1f %%", 100*topt))
-        plt.legend(;frameon=false, fontsize=10)
-    end
-    if ~isnothing(dot)
-        plt.plot(1e6dot, 100dotparams.transmission, "o"; color="b", label=@sprintf("%.1f %%", 100dotparams.transmission))
-        plt.legend(;frameon=false, fontsize=10)
-    end
-    plt.xlim(1e6.*extrema(a))
-    plt.ylim(ymin=0)
-    plt.xlabel("Core radius (μm)")
-    plt.ylabel("Transmission (%)")
-
-    plt.subplot(1, 4, 4)
-    plt.plot(1e6a, intensity*1e-4)
-    plt.axhline(Isupp*1e-4/S_ion; linestyle="--", color="r", label="Limit")
-    if ~ismissing(aopt)
-        plt.plot(1e6aopt, intopt*1e-4, "o"; color="k", label=@sprintf("%.2e W/cm\$^{-2}\$", intopt*1e-4))
-    end
-    if ~isnothing(dot)
-        intdot = P0/(A0*dot^2)
-        plt.plot(1e6dot, intdot*1e-4, "o"; color="b", label=@sprintf("%.2e W/cm\$^{-2}\$", intdot*1e-4))
-    end
-    plt.xlim(1e6.*extrema(a))
-    plt.ylim(0, 2*Isupp*1e-4/S_ion)
-    plt.legend(;frameon=false, fontsize=10)
-    plt.xlabel("Core radius (μm)")
-    plt.ylabel("Intensity (W/cm\$^{-2}\$)")
-
-    fig.tight_layout()
-    plt.subplots_adjust(top=0.9)
-    plt.suptitle(@sprintf("Input peak power: %.2f GW | Pressure: %.2f bar", P0*1e-9, pr))
+    plotdata = (;a, broadfac, factor, flength, Ltot, transmission=t, intensity,
+                 Isupp, S_ion, P0, pressure=pr,
+                 opt, dot=dotdata)
+    fig = Plotting.getext().plot_optimise(plotdata)
 
     return fig, f
 end

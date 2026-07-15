@@ -1,3 +1,4 @@
+using GLMakie # load a plotting backend (or use PythonPlot / CairoMakie)
 import HiSol
 
 λ0 = 800e-9

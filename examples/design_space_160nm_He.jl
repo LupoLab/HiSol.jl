@@ -1,5 +1,6 @@
 # Design-space example from the README: the HCF system used in the first demonstration
 # of RDW emission in a hollow capillary fibre [Travers et al., Nature Photonics 13, 547 (2019)].
+using GLMakie # load a plotting backend (or use PythonPlot / CairoMakie)
 using HiSol
 
 λ_target = 160e-9 # 160 nm RDW
