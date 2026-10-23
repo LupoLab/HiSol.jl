@@ -53,7 +53,7 @@ function n2_solid(material)
         # Kabaciński et al., 10.1364/OE.27.011018
         return 3.22e-20
     else
-        error("Unkown glass $material")
+        error("Unknown glass $material")
     end
 end
 
@@ -68,7 +68,7 @@ function elastic_limit(material)
     elseif material == :Al2O3
         return 276e6
     else
-        error("Unkown glass $material")
+        error("Unknown glass $material")
     end
 end
 
